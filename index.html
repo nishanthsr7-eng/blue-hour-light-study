@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Blue Hour: A Light Study | Interactive WebGL Architecture</title>
+    <meta
+      name="description"
+      content="An interactive WebGL light study: a twisting residential tower switches on floor by floor as blue hour turns to night. Scrub the evening, change the season, untwist the slabs."
+    />
+    <meta name="author" content="Nishanth S" />
+    <meta name="theme-color" content="#050508" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <link rel="canonical" href="%SITE_URL%/" />
+
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Blue Hour" />
+    <meta property="og:title" content="Blue Hour: A Light Study" />
+    <meta
+      property="og:description"
+      content="A twisting residential tower switches on floor by floor as blue hour turns to night. An interactive WebGL study in light, built with three.js."
+    />
+    <meta property="og:url" content="%SITE_URL%/" />
+    <meta property="og:image" content="%SITE_URL%/og-image.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="A white twisting tower at night, its floors lit warm against a deep blue sky."
+    />
+    <meta property="og:locale" content="en_US" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Blue Hour: A Light Study" />
+    <meta
+      name="twitter:description"
+      content="A twisting residential tower switches on floor by floor as blue hour turns to night. Interactive WebGL."
+    />
+    <meta name="twitter:image" content="%SITE_URL%/og-image.jpg" />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "CreativeWork",
+        "name": "Blue Hour: A Light Study",
+        "alternateName": "Residence 07, Light Study / 01",
+        "description": "An interactive WebGL light study of a twisting residential tower switching on, floor by floor, as blue hour turns to night.",
+        "url": "%SITE_URL%/",
+        "image": "%SITE_URL%/og-image.jpg",
+        "genre": "Interactive 3D web design",
+        "keywords": "WebGL, three.js, light study, architectural visualization, interactive 3D, creative coding",
+        "inLanguage": "en",
+        "dateCreated": "2026-10",
+        "author": {
+          "@type": "Person",
+          "name": "Nishanth S",
+          "url": "https://github.com/nishanthsr7-eng"
+        }
+      }
+    </script>
+  </head>
+  <body class="is-intro">
+    <canvas
+      id="gl"
+      role="img"
+      aria-label="A white residential tower of twisting slabs at night. Its floors switch on one by one as the sky turns from blue hour to dark."
+    ></canvas>
+    <div class="vignette"></div>
+
+    <h1 class="title">Blue Hour — <b>Light Study / 01</b></h1>
+    <p class="sr-only">
+      An interactive study of light on one building, Residence 07: a sculptural tower of twisting white slabs with a
+      glazed lobby, ten residential floors and a penthouse pool. The scene opens at blue hour with the house dark, then
+      the sky deepens and the house switches on, from the lobby up to the beacon. Scroll to fly a drone up the tower,
+      drag to untwist the slabs, click a window to switch that floor's lights, and change the season or the weather.
+    </p>
+    <div class="hints" id="hints" aria-hidden="true">
+      <span><kbd>Drag</kbd> untwist</span>
+      <span><kbd>Shift-drag</kbd> orbit</span>
+      <span><kbd>Click</kbd> a window</span>
+      <span><kbd>Space</kbd> play</span>
+      <span><kbd>R</kbd> replay</span>
+      <span><kbd>Scroll</kbd> rise</span>
+      <span><kbd>?</kbd> all controls</span>
+    </div>
+
+    <div class="hud">
+      <div class="hud__clock" id="hudClock">18:56</div>
+      <div>Rooms lit · <em id="hudRooms">0</em>%</div>
+      <div id="hudName">Residence 07 · Arrival</div>
+      <div>Height · <em id="hudH">+1.0</em> m</div>
+    </div>
+
+    <div class="count" aria-live="off">
+      <span class="count__n" id="countN">00</span>
+      <span class="count__of">/ 11<br /><b>Floors lit</b></span>
+    </div>
+
+    <nav class="rail" id="rail" aria-label="Flight path"></nav>
+    <div class="timebar" id="timebar">
+      <button class="tb__play" id="playBtn" data-icon="pause" aria-label="Pause"><i></i></button>
+      <div
+        class="tb__track"
+        role="slider"
+        tabindex="0"
+        aria-label="Time of night, 18:56 to 00:40"
+        aria-valuemin="0"
+        aria-valuemax="100"
+        aria-valuenow="0"
+      >
+        <i class="tb__fill"></i>
+        <span class="tb__hr" style="--h: 0.0116" aria-hidden="true">19</span>
+        <span class="tb__hr" style="--h: 0.186" aria-hidden="true">20</span>
+        <span class="tb__hr" style="--h: 0.3605" aria-hidden="true">21</span>
+        <span class="tb__hr" style="--h: 0.5349" aria-hidden="true">22</span>
+        <span class="tb__hr" style="--h: 0.7093" aria-hidden="true">23</span>
+        <span class="tb__hr" style="--h: 0.8837" aria-hidden="true">00</span>
+        <i class="tb__mark" title="19:42, every floor lit"></i>
+        <i class="tb__knob"></i>
+      </div>
+    </div>
+    <div class="toggles">
+      <button class="tg" id="rainBtn" aria-pressed="false">Rain</button>
+      <button class="tg tg--plain" id="seasonBtn" aria-label="Season: autumn">Autumn</button>
+      <button class="tg" id="soundBtn" aria-pressed="false">Sound</button>
+      <button class="tg" id="muteBtn" aria-pressed="false">Mute</button>
+      <button class="tg tg--plain" id="keysBtn" aria-expanded="false" aria-controls="keys">Controls</button>
+    </div>
+    <dl class="keys" id="keys" hidden>
+      <dt>Drag</dt>
+      <dd>Untwist the tower</dd>
+      <dt>Shift-drag</dt>
+      <dd>Orbit · right-drag too</dd>
+      <dt>Double-click</dt>
+      <dd>Recentre the orbit</dd>
+      <dt>Move</dt>
+      <dd>Lean the camera</dd>
+      <dt>Scroll</dt>
+      <dd>Rise up the tower</dd>
+      <dt>↑ ↓</dt>
+      <dd>Previous / next level</dd>
+      <dt>Click a window</dt>
+      <dd>Switch that floor's lights</dd>
+      <dt>Space</dt>
+      <dd>Pause / play · on past 19:42 into the night</dd>
+      <dt>R</dt>
+      <dd>Replay from blue hour</dd>
+      <dt>Time bar</dt>
+      <dd>Drag to any minute, 18:56 – 00:40 · ← → when focused</dd>
+      <dt>S</dt>
+      <dd>Next season</dd>
+      <dt>P</dt>
+      <dd>Light pattern across the floors</dd>
+      <dt>M</dt>
+      <dd>Mute all sound</dd>
+      <dt>?</dt>
+      <dd>Show or hide this list</dd>
+    </dl>
+    <div class="track" id="track" aria-hidden="true"></div>
+    <div class="veil" id="veil" role="status" aria-live="polite">
+      <div class="veil__inner">
+        <p class="veil__name" aria-hidden="true">Blue Hour</p>
+        <p class="veil__title">Light Study / 01</p>
+        <div class="veil__bar"><i id="veilBar"></i></div>
+        <p class="veil__step" id="veilStep">Painting surfaces</p>
+        <noscript>
+          <style>
+            .veil__bar,
+            #veilStep {
+              display: none;
+            }
+          </style>
+          <p class="veil__step">This light study runs in WebGL and needs JavaScript.</p>
+        </noscript>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
