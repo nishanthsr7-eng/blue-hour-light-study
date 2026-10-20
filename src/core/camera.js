@@ -24,12 +24,14 @@ export const QUALITY = [
 ];
 // The mirror pool redraws the whole scene for its reflection: the biggest CPU
 // cost per frame. Lower levels refresh it every 2nd / 4th frame; a still pool
-// reflecting a slow scene hides the difference.
+// reflecting a slow scene hides the difference. While the camera is still,
+// the reflection has no parallax to keep up with, so it refreshes at half that rate.
 {
   const reflect = anchors.mirror.onBeforeRender;
   let n = 0;
   anchors.mirror.onBeforeRender = function (...args) {
-    if (n++ % QUALITY[qLevel].mirrorEvery === 0) reflect.apply(this, args);
+    const every = QUALITY[qLevel].mirrorEvery * (cameraMoving() ? 1 : 2);
+    if (n++ % every === 0) reflect.apply(this, args);
   };
 }
 export let qLevel = (navigator.hardwareConcurrency || 8) <= 4 || (navigator.deviceMemory || 8) <= 4 ? 1 : 0;

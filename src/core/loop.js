@@ -64,6 +64,7 @@ function frame(now) {
   const idle = now - lastInput > 6000;
   if (!idle || now - lastDraw > 32) {
     grade.uniforms.uTime.value = (now * 0.001) % 100;
+    scene.updateMatrixWorld();
     composer.render();
     // Governor: a slow-frame streak (~1.5 s above 22 ms while active) drops one quality step.
     if (!idle && lastDraw && el > 3) {
@@ -82,7 +83,7 @@ function frame(now) {
       perf.n++;
       if (perf.n === 300)
         debug(
-          `[perf] first frame ${perf.first.toFixed(0)} ms after navigation; mean frame ${(perf.sum / 300).toFixed(2)} ms over 300 frames`,
+          `[perf] first frame ${perf.first.toFixed(0)} ms after navigation; mean frame interval ${(perf.sum / 300).toFixed(2)} ms over 300 frames`,
         );
     }
     perf.first ??= now;
@@ -132,6 +133,7 @@ async function warmUp() {
   loadProgress(0.92, 'Setting the scene');
   const compiled = renderer.info.programs.length;
   for (let i = 0; i < 2; i++) {
+    scene.updateMatrixWorld();
     composer.render();
     await nextFrame();
   }

@@ -12,7 +12,14 @@ import { MAX_ANISO, mulberry, TAU, yieldToBrowser } from './util.js';
 await yieldToBrowser(); // a fresh slice for this build step (util.js)
 
 const canvas = document.getElementById('gl');
-export const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+// No MSAA on the canvas itself: the composer draws into its own 4× MSAA target,
+// and the canvas only ever receives the final full-screen grade pass.
+export const renderer = new THREE.WebGLRenderer({
+  canvas,
+  antialias: false,
+  stencil: false,
+  powerPreference: 'high-performance',
+});
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.15;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -20,6 +27,9 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
 export const scene = new THREE.Scene();
+// World matrices are updated once per frame in loop.js, not again for every
+// render of the scene (the mirror pool draws it a second time).
+scene.matrixWorldAutoUpdate = false;
 // Season state shared by several shaders: how much snow has settled, and the hills' far tone.
 export const SNOW_COVER = { value: 0 },
   STAGE_C = { value: new THREE.Vector3(0.016, 0.021, 0.036) };
