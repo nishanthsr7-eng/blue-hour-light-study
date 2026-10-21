@@ -690,3 +690,38 @@ body.is-intro .hints {
   letter-spacing: 0.16em;
   color: var(--bone-dim);
 }
+/* Phones and tablets: the notice over the whole tower lit at night (a sharp
+   portrait still from scripts/capture.mjs, fetched only here), and a quiet way past it. */
+.veil.is-desktop-only {
+  background-image: url('../assets/phone-poster.webp');
+  background-position: center top;
+}
+.veil.is-desktop-only::before {
+  background: linear-gradient(
+    rgba(5, 5, 8, 0.15) 0%,
+    rgba(5, 5, 8, 0.55) 35%,
+    rgba(5, 5, 8, 0.78) 50%,
+    rgba(5, 5, 8, 0.55) 65%,
+    rgba(5, 5, 8, 0.2) 100%
+  );
+}
+.veil.is-desktop-only .veil__bar {
+  display: none;
+}
+.veil__anyway {
+  margin-top: 26px;
+  padding: 10px 18px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(5, 5, 8, 0.6);
+  font: 600 9px/1 var(--f-ui);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--bone-dim);
+  cursor: pointer;
+  pointer-events: auto; /* the veil itself lets input through */
+}
+.veil__anyway:focus-visible {
+  outline: 1px solid var(--bone-dim);
+  outline-offset: 3px;
+}

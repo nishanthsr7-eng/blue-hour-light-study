@@ -1,6 +1,7 @@
 /**
- * Captures the Open Graph image and the README screenshots from the
- * production build, in a real Chromium (Chrome or Edge) with the GPU on.
+ * Captures the Open Graph image, the README screenshots and the phone
+ * notice's backdrop from the production build, in a real Chromium (Chrome or
+ * Edge) with the GPU on.
  *
  *   npm run build && npm run capture
  *
@@ -8,7 +9,9 @@
  * public/og-image.jpg (1200 × 630), docs/media/*.jpg (1600 × 900) and the
  * loading screen's backdrop, src/assets/veil-poster.webp: the scene's very
  * first frame at blue hour, shrunk to 96 × 54 and softened (about 1.5 KB,
- * inlined into the page by vite.config.js).
+ * inlined into the page by vite.config.js). The phone backdrop,
+ * src/assets/phone-poster.webp, is the whole tower lit at night in portrait
+ * (1080 × 2340), shown behind the desktop-only notice on touch devices.
  */
 import { existsSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
@@ -87,6 +90,19 @@ try {
     });
     await writeFile(path.join(ROOT, 'src/assets/veil-poster.webp'), Buffer.from(dataUrl.split(',')[1], 'base64'));
     console.log('  src/assets/veil-poster.webp');
+    await page.close();
+  }
+  {
+    // The desktop-only notice's backdrop: the whole tower, portrait, no interface.
+    const page = await browser.newPage();
+    await page.setViewport({ width: 540, height: 1170, deviceScaleFactor: 2 });
+    await page.goto(`${url}?view=tower`, { waitUntil: 'load' });
+    await page.waitForSelector('#veil.is-off', { timeout: 60000 });
+    await sleep(8000); // the house lights up
+    await page.addStyleTag({ content: 'body > *:not(#gl) { visibility: hidden !important; }' });
+    await sleep(500);
+    await page.screenshot({ path: path.join(ROOT, 'src/assets/phone-poster.webp'), type: 'webp', quality: 72 });
+    console.log('  src/assets/phone-poster.webp');
     await page.close();
   }
   for (const [file, width, height, prepare] of SHOTS) {
