@@ -280,12 +280,20 @@ export const flowMats = [];
     pm.renderOrder = -2;
     PH.add(pm);
   }
-  for (const [x, z] of [
-    [-11.6, 8],
-    [11.6, 8],
-    [-11.6, -8],
-    [11.6, -8],
+  /* The deck and roof corners are rounded about (±6, ±3), so a column at the
+     bounding box's corner stands past both edges. Each one sits on the corner
+     diagonal instead, 5.62 m out: between the planters (5.45) and the
+     balustrade (5.8), under the roof and clear of the lounge glazing. */
+  const COL_R = 5.62,
+    diag = Math.hypot(5.6, 5);
+  for (const [sx, sz] of [
+    [-1, 1],
+    [1, 1],
+    [-1, -1],
+    [1, -1],
   ]) {
+    const x = sx * (6 + (COL_R * 5.6) / diag),
+      z = sz * (3 + (COL_R * 5) / diag);
     const c = at(
       new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, ROOF - 0.08 - DK, 16), M.metal),
       x,
