@@ -17,7 +17,7 @@ export const sound = (() => {
     buf = null,
     verb = null,
     on = true, // the visitor's choice; nothing plays until unlock() or toggle() runs in a gesture
-    muted = true, // muted by default for now; the Mute button unmutes
+    muted = false, // Mute or M toggles it; silences everything whatever Sound is set to
     wantRain = false;
   const level = () => (on && !muted ? 0.5 : 0);
   const HUM = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21, 24, 26]; // a pentatonic climb, lobby → penthouse

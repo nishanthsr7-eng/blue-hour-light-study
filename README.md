@@ -27,8 +27,8 @@ line of light rises up the lift shaft, the floors light from the bottom up,
 and the aviation beacon comes on last. The evening then runs to 00:40, and
 floors go dark as the residents turn in.
 
-Light is the only thing that moves the story. The page has no copy beyond a
-title, a clock and a count of lit floors.
+Light is the only thing that moves the story. Apart from a title, a clock, a
+count of lit floors and a few small controls, the page has no copy.
 
 Built for desktop browsers with a mouse or trackpad, in a window at least
 1024 × 540. Smaller windows, phones and tablets get a one-line notice and
@@ -67,28 +67,23 @@ none of the scene.
 
 ## Results
 
-Production build in Chrome at 1440 × 900 on an RTX 5050 laptop, medians of
-three runs. "Cold" is a first visit with no shader cache; "warm" is a repeat
-visit. `npm run bench` reproduces these; methods are in
+Production build in Chrome, medians of three runs. Figures come from one
+laptop, run on its discrete GPU and on its low-end integrated GPU (AMD Radeon
+610M). The hardware, method and full results are in
 [PERFORMANCE.md](docs/PERFORMANCE.md).
 
-| Metric                   | Result                                         |
-| ------------------------ | ---------------------------------------------- |
-| Scene on screen          | 2.7 s warm, 3.7 s cold                         |
-| Total blocking time      | 168 ms warm, 416 ms cold                       |
-| Longest main-thread task | 127 ms warm, 185 ms cold                       |
-| CPU / GPU time per frame | 4.4 ms / 4.7 ms (16.7 ms is the 60 fps budget) |
-| Draw calls per frame     | 348–787, from 965 meshes merged into 373       |
+| Measure                    | Result                                                    |
+| -------------------------- | --------------------------------------------------------- |
+| First paint, layout shift  | 0.5 s, 0                                                  |
+| Scene on screen            | 2.7 s repeat visit, 3.7 s first visit                     |
+| Frame cost at full quality | 4.4 ms CPU, 4.7 ms GPU (60 fps budget: 16.7 ms)           |
+| Low-end integrated GPU     | 50 fps at rest, 74 fps in the drone flight                |
+| Budget laptop (simulated)  | 38–71 fps while interacting; inputs answered in ≤ 120 ms  |
+| Lighthouse (desktop)       | Performance 73–77; Accessibility, Best practices, SEO 100 |
+| Draw calls per frame       | 348–787, from 965 meshes merged into 373                  |
 
-On a low-end integrated GPU (AMD Radeon 610M) adaptive quality settles at
-50 fps on the arrival view and 74 fps in the drone flight. Played as a budget
-laptop (that GPU, a CPU slowed threefold, 1366 × 768; `npm run bench:lowend`),
-the intro runs at 26–37 fps, every interaction at 38–71 fps, and no input
-waits more than 120 ms for a frame. The page loads and runs in WebKit,
-Safari's engine (`npm run bench:webkit`).
-
-Lighthouse (desktop, cold): Performance 73–77, Accessibility 100, Best
-practices 100, SEO 100. Layout shift 0; first paint 0.5 s.
+The page also loads and renders correctly in WebKit, Safari's engine. Safari
+on a Mac has not been measured yet.
 
 ## Controls
 
@@ -140,7 +135,8 @@ with OffscreenCanvas, the Web Audio API, [Vite](https://vite.dev), and
 
 ## Procedural and scanned
 
-Almost everything is made in code. Only three things come from outside:
+Almost everything is made in code. From outside come only four photo-scanned
+texture sets, one field recording and the typeface (see Credits):
 
 | Scanned / recorded                                                  | Procedural (made in code)                                                |
 | ------------------------------------------------------------------- | ------------------------------------------------------------------------ |

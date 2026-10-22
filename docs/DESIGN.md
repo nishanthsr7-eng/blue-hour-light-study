@@ -67,12 +67,12 @@ a few leaves still green, and spring runs blossom from white to pink with new
 green leaves showing through. Summer crowns go denser and darker, with clumps
 of light and shade, under a warm haze low on the horizon. Bark follows the
 season too: the cherry scan shows only in spring, and is greyed and furrowed
-the rest of the year. Autumn leaves leaf litter under the trees; spring leaves
-a patch of petals under each tree and on the pool. The moon carries small
-craters, a slight fall-off at its limb and a halo that is widest in winter's
-crisp air. The white fascias carry a faint drip line of grime along their
-undersides, with uneven streaks, so they do not read as clean CG up close. Rain turns up the pool
-ripples and spreads puddles; in winter it becomes snow, which settles over
+the rest of the year. Autumn scatters leaf litter under the trees; spring
+leaves a patch of petals under each tree and on the pool. The moon carries
+small craters, a slight fall-off at its limb and a halo that is widest in
+winter's crisp air. The white fascias carry a faint drip line of grime along
+their undersides, with uneven streaks, so they do not read as clean CG up
+close. Rain turns up the pool ripples and spreads puddles; in winter it becomes snow, which settles over
 about 30 seconds in drifts on the lawn, plinth, hedge and planter tops, tree
 crowns and the penthouse roof (never under a slab), with a soft bump and
 glints near the eye, and the pool freezes into frosted, cracked ice.

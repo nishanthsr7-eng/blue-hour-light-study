@@ -12,84 +12,111 @@ study costs, how it stays fast, and what is still open.
 - Desktop only: below a 1024 × 540 window, or on a touch-only device, the
   page shows a one-line notice and loads none of the scene.
 
-## Method
+## Test setup
 
-Production build at 1440 × 900, measured 2026-10-21. Medians of three runs.
+All figures come from one Windows laptop with two GPUs, measured on
+2026-10-21 against the production build. Each figure is the median of three
+runs unless a range is given. The rest of this page refers to the profiles
+below by name.
 
-- **Chrome** with `npm run bench`, on a laptop with an RTX 5050 GPU and a
-  Ryzen 9 8940HX. **Cold** is a fresh browser profile (a first visit, no
-  shader cache); **warm** (`WARM=1`) reuses a profile primed by one visit.
-- **Low-end laptop** with the same script, forced onto the laptop's
-  integrated AMD Radeon 610M (`LOW_GPU=1`), with and without fourfold CPU
-  throttling (`CPU=4`). The 610M is a two-compute-unit GPU, slower than the
+| Profile                   | GPU                                     | CPU                                    | Window     | Command                         |
+| ------------------------- | --------------------------------------- | -------------------------------------- | ---------- | ------------------------------- |
+| Discrete GPU              | NVIDIA GeForce RTX 5050 Laptop          | AMD Ryzen 9 8940HX                     | 1440 × 900 | `npm run bench`                 |
+| Integrated GPU            | AMD Radeon 610M (the laptop's own iGPU) | AMD Ryzen 9 8940HX                     | 1440 × 900 | `LOW_GPU=1 npm run bench`       |
+| Integrated GPU, slow CPU  | AMD Radeon 610M                         | Throttled 4×                           | 1440 × 900 | `LOW_GPU=1 CPU=4 npm run bench` |
+| Budget laptop (simulated) | AMD Radeon 610M                         | Throttled 3×; 4 threads, 4 GB reported | 1366 × 768 | `npm run bench:lowend`          |
+| WebKit                    | Headless, no Metal                      | AMD Ryzen 9 8940HX                     | 1440 × 900 | `npm run bench:webkit`          |
+
+- **Browser.** Chrome for every profile except WebKit, which is WebKit 26
+  through Playwright 1.56.
+- **Cold and warm.** Cold is a fresh browser profile: a first visit with no
+  shader cache. Warm (`WARM=1`) reuses a profile primed by one visit.
+- **Why the Radeon 610M.** It is a two-compute-unit GPU, slower than the
   integrated graphics in most mid-range laptops (Intel Iris Xe, Radeon
   660M/680M, Apple M-series), so it stands in for the low end of the range.
-- **A budget laptop** with `npm run bench:lowend`: the Radeon 610M, the CPU
-  slowed threefold (roughly an entry-level laptop CPU next to this one), a
-  1366 × 768 window, and four threads and 4 GB of memory reported to the
-  page. It times the intro, every interaction and the input delay. Also run
-  at a sixfold slowdown, below a current Celeron, as the floor.
-- **Safari's engine** with `npm run bench:webkit`: WebKit 26 through
-  Playwright. It is WebKit, not Safari on macOS (no Metal, a headless
-  compositor), so it checks that the page loads and runs correctly and what
-  the CPU side costs; it is not a frame-rate figure for Safari on a Mac.
+- **Why the budget laptop is simulated.** A threefold CPU slowdown puts this
+  CPU roughly at an entry-level laptop's. It is also run at a sixfold
+  slowdown, below an entry-level Intel N-series CPU, as the floor.
+- **What WebKit shows.** Playwright's WebKit is Safari's engine, not Safari
+  on macOS. It checks that the page loads and renders correctly and what the
+  CPU side costs; it is not a frame-rate figure for Safari on a Mac.
+
+## Summary
+
+| Measure                    | Result                                                    | Profile                   |
+| -------------------------- | --------------------------------------------------------- | ------------------------- |
+| First paint, layout shift  | 0.5 s, 0                                                  | Discrete GPU              |
+| Scene on screen            | 2.7 s warm, 3.7 s cold                                    | Discrete GPU              |
+| Frame cost at full quality | 4.4 ms CPU, 4.7 ms GPU (60 fps budget: 16.7 ms)           | Discrete GPU              |
+| Frame rate                 | 50 fps at rest, 74 fps in flight                          | Integrated GPU            |
+| Frame rate while in use    | 38–71 fps; every input answered within 120 ms             | Budget laptop (simulated) |
+| Lighthouse 12, desktop     | Performance 73–77; Accessibility, Best practices, SEO 100 | Discrete GPU              |
 
 ## Loading
 
-| Setup                        | Scene on screen | Total blocking time | Longest task |
-| ---------------------------- | --------------- | ------------------- | ------------ |
-| Chrome, RTX 5050, cold       | 3.7 s           | 416 ms              | 185 ms       |
-| Chrome, RTX 5050, warm       | 2.7 s           | 168 ms              | 127 ms       |
-| Chrome, Radeon 610M, cold    | 4.1 s           | 623 ms              | 267 ms       |
-| Chrome, Radeon 610M, CPU 4×  | 7.4 s           | 3.0 s               | 547 ms       |
-| WebKit 26 (Playwright), cold | 5.9 s           | not reported        | not reported |
+| Profile                         | Scene on screen | Total blocking time | Longest task |
+| ------------------------------- | --------------- | ------------------- | ------------ |
+| Discrete GPU, warm              | 2.7 s           | 168 ms              | 127 ms       |
+| Discrete GPU, cold              | 3.7 s           | 416 ms              | 185 ms       |
+| Integrated GPU, cold            | 4.1 s           | 623 ms              | 267 ms       |
+| Integrated GPU, slow CPU, cold  | 7.4 s           | 3.0 s               | 547 ms       |
+| Budget laptop (simulated), cold | 6–7 s           | not measured        | not measured |
+| WebKit, cold                    | 5.9 s           | not reported        | not reported |
 
 The loading screen is real content (the title and a live progress line), so
-the page paints in 0.5 s and the wait reads as part of the piece. Playwright's
-WebKit on Windows has no OffscreenCanvas, so it paints the textures on the
-main thread; Safari 16.4 and later paints them in workers like Chrome.
+the page paints in 0.5 s and the wait reads as part of the piece.
+Playwright's WebKit on Windows has no OffscreenCanvas, so it paints the
+textures on the main thread. Safari 16.4 and later supports OffscreenCanvas
+and should paint them in workers as Chrome does; this is not yet measured.
 
 Lighthouse 12, desktop preset, cold: Performance 73–77, Accessibility 100,
 Best practices 100, SEO 100. First contentful paint 0.5 s, largest
 contentful paint 0.7 s, layout shift 0. (PageSpeed Insights runs without a
 GPU, so its scores for a WebGL page say little about real visitors.)
 
-## Running
+## Frame cost
 
-Cost per frame, since the display's refresh rate caps the frame rate on a
-fast GPU. CPU is the whole frame callback; GPU is measured with
-`EXT_disjoint_timer_query_webgl2`. Medians over 300 frames, at rest on the
-arrival view and during the drone flight up the tower.
+On a fast GPU the display's refresh rate caps the frame rate, so this
+section reports the cost of a frame instead. CPU is the whole frame
+callback; GPU is measured with `EXT_disjoint_timer_query_webgl2`. Medians
+over 300 frames, at rest on the arrival view and during the drone flight up
+the tower.
 
-| Per frame, Chrome, RTX 5050 | CPU    | GPU    |
-| --------------------------- | ------ | ------ |
-| At rest                     | 4.4 ms | 4.7 ms |
-| Drone flight                | 3.1 ms | 3.1 ms |
+### Discrete GPU
 
-About 9 ms of combined work against a 16.7 ms budget at 60 Hz, at full
-quality (1.75× pixel ratio cap, bloom, 4× MSAA).
+At full quality (1.75× pixel ratio cap, bloom, 4× MSAA):
 
-**On integrated graphics.** The quality governor (below) steps the Radeon
-610M down to its lowest level within about 10 s of the scene appearing. From
-then on:
+| Per frame    | CPU    | GPU    |
+| ------------ | ------ | ------ |
+| At rest      | 4.4 ms | 4.7 ms |
+| Drone flight | 3.1 ms | 3.1 ms |
 
-| Radeon 610M, lowest quality level | CPU     | GPU     | Frame rate |
-| --------------------------------- | ------- | ------- | ---------- |
-| At rest                           | 4.1 ms  | 17.5 ms | 50 fps     |
-| Drone flight                      | 3.3 ms  | 14.7 ms | 74 fps     |
-| At rest, CPU throttled 4×         | 24.4 ms | n/a     | 38 fps     |
-| Drone flight, CPU throttled 4×    | 17.8 ms | n/a     | 50 fps     |
+CPU and GPU work in parallel, so each is compared with the 16.7 ms budget
+for 60 fps on its own: both use under a third of it.
 
-(GPU timer queries are distorted by CPU throttling, so the throttled rows
-give CPU time and frame rate only.) On this GPU the costliest parts of a
-frame are multisampling (about 30 % of GPU time at full quality), the tower,
-and the season-shaded terrain.
+### Integrated GPU
 
-**On a budget laptop** (`npm run bench:lowend`, CPU 3×, 1366 × 768; ranges
-over three runs). The page starts at quality level 2 on the low-spec hint,
-and the governor reaches level 4 about 7 s after the scene appears.
+The quality governor (below) steps the Radeon 610M down to its lowest level
+within about 10 s of the scene appearing. From then on:
 
-| Budget laptop               | Frame rate | Worst frame                    |
+| Lowest quality level        | CPU     | GPU     | Frame rate |
+| --------------------------- | ------- | ------- | ---------- |
+| At rest                     | 4.1 ms  | 17.5 ms | 50 fps     |
+| Drone flight                | 3.3 ms  | 14.7 ms | 74 fps     |
+| At rest, slow CPU (4×)      | 24.4 ms | n/a     | 38 fps     |
+| Drone flight, slow CPU (4×) | 17.8 ms | n/a     | 50 fps     |
+
+GPU timer queries are distorted by CPU throttling, so the slow-CPU rows give
+CPU time and frame rate only. On this GPU the costliest parts of a frame are
+multisampling (about 30 % of GPU time at full quality), the tower, and the
+season-shaded terrain.
+
+### Budget laptop (simulated)
+
+Ranges over three runs. The page starts at quality level 2 on the low-spec
+hint, and the governor reaches level 4 about 7 s after the scene appears.
+
+| Moment                      | Frame rate | Worst frame                    |
 | --------------------------- | ---------- | ------------------------------ |
 | Intro, first 6 s            | 26–37 fps  |                                |
 | Intro, 6–12 s               | 45–56 fps  |                                |
@@ -99,15 +126,18 @@ and the governor reaches level 4 about 7 s after the scene appears.
 | Click a window, Space       | 43–48 fps  | 33–97 ms                       |
 | Slowest input to next frame |            | 48 ms (keys), 120 ms (pointer) |
 
-The scene appears 6–7 s after navigation. With the CPU slowed sixfold the
-study stays usable but not smooth: about 20 fps once settled, 13–15 fps in
-the intro, and the main thread (three.js issuing 330–750 draw calls) is the
-limit.
+With the CPU slowed sixfold the study stays usable but not smooth: about
+20 fps once settled and 13–15 fps in the intro. The main thread, with
+three.js issuing 330–750 draw calls, is the limit.
 
-**In WebKit**, a frame costs 6 ms of CPU at rest and 5 ms in flight
-(WebKit's timer resolution is 1 ms). The headless build paces frames at
-about 40 fps whatever the load, so the governor also steps down there; the
-lit house, seasons, snow and drone flight all render correctly.
+### WebKit
+
+A frame costs 6 ms of CPU at rest and 5 ms in flight (WebKit's timer
+resolution is 1 ms). The headless build paces frames at about 40 fps
+whatever the load, so the governor also steps down there. The lit house,
+seasons, snow and drone flight all render correctly.
+
+## Scene and payload
 
 | Scene                | Value                        |
 | -------------------- | ---------------------------- |
@@ -116,11 +146,17 @@ lit house, seasons, snow and drone flight all render correctly.
 | Static meshes        | 965 merged into 373          |
 | Real lights          | 6, one shadow map drawn once |
 
-**Payload (gzip):** HTML 6.5 KB with the CSS inlined, JavaScript ~282 KB
-(three.js ~176 KB), font 48 KB: about 340 KB before the scene starts.
-Scanned textures (3.0 MB) and the night ambience (0.6 MB) stream in after the
-scene appears and never block it. Below desktop size the page downloads only
-the HTML, the font and two small scripts (under 2 KB).
+| Download (gzip)               | Size    | When                           |
+| ----------------------------- | ------- | ------------------------------ |
+| HTML, with the CSS inlined    | 6.5 KB  | Before the scene starts        |
+| JavaScript (three.js ~176 KB) | ~282 KB | Before the scene starts        |
+| Font                          | 48 KB   | Before the scene starts        |
+| Scanned textures              | 3.0 MB  | Streamed after the scene shows |
+| Night ambience                | 0.6 MB  | Streamed after the scene shows |
+
+About 340 KB loads before the scene starts; the textures and sound never
+block it. Below desktop size the page downloads only the HTML, the font and
+two small scripts (under 2 KB).
 
 ## How it stays fast
 
@@ -163,7 +199,7 @@ the HTML, the font and two small scripts (under 2 KB).
 - After 6 s without input or motion, drawing drops to about 30 fps.
 - Sound costs nothing until it can be heard. Opening the audio device and
   building the reverb take about 100 ms of main thread, so they wait for
-  the first unmute (Mute or M) rather than the first click.
+  the first click or key, and a visitor who mutes first never pays them.
 - A click on a window tests for blockers only up to that room's distance,
   so meshes behind it are skipped by their bounding spheres.
 - A window shrunk below desktop size stops the frame loop and suspends the
@@ -198,8 +234,8 @@ per-step build timings in the console and the DevTools Performance panel.
 
 ## Still open
 
-- Confirm frame rate on Safari on a Mac with a mid-range GPU; the WebKit run
-  above checks correctness and CPU cost only.
+- Measure Safari on a Mac with a mid-range GPU; the WebKit run above checks
+  correctness and CPU cost only.
 - 15 shader programs (shadow, mirror, post-processing) still compile in one
   ~185 ms task on a first visit.
 - A fast CPU with weak integrated graphics gets no low-spec hint, so the

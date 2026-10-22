@@ -7,7 +7,7 @@
 |              |                                                                                                                                     |
 | ------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
 | **Role**     | Lighting and motion design, interface design, procedural 3D modelling, GLSL shaders, generative sound and performance engineering   |
-| **Platform** | Desktop web, on the latest Chrome, Edge, Firefox and Safari                                                                         |
+| **Platform** | Desktop web; tested in Chrome and Edge, and in WebKit (Safari's engine)                                                             |
 | **Stack**    | three.js (WebGL 2), custom GLSL shaders, the Web Audio API, Web Workers and Vite                                                    |
 | **Links**    | [Live site](https://blue-hour-light-study.pages.dev) · [Source on GitHub](https://github.com/nishanthsr7-eng/blue-hour-light-study) |
 
@@ -23,9 +23,6 @@ page opens at 18:56, at blue hour, with the house dark. Over a few seconds
 the sky deepens and the house switches on, floor by floor. Visitors can then
 scrub through the evening, fly up the tower, untwist it, change the season
 or switch any floor's lights with a click.
-
-<!-- FILL: one or two sentences on why you made it: what you wanted to learn
-     or prove, or what inspired it (a photograph, a building, a film). -->
 
 ## The challenge
 
@@ -191,28 +188,29 @@ The technical detail is in [ARCHITECTURE.md](ARCHITECTURE.md) and
 | -------------------------------- | ---------------------------------------------------------- |
 | First paint                      | 0.5 s, with zero layout shift                              |
 | Scene on screen                  | 2.7 s (repeat visit), 3.7 s (first visit)                  |
-| Work per frame                   | ~9 ms of a 16.7 ms budget at 60 fps                        |
-| Low-end integrated GPU           | 50 fps at rest, 74 fps in flight (Radeon 610M)             |
-| Budget laptop                    | 38–71 fps while interacting; inputs answered within 120 ms |
-| Lighthouse (desktop)             | Accessibility, Best practices and SEO all 100              |
+| Frame cost at full quality       | 4.4 ms CPU, 4.7 ms GPU, against a 16.7 ms budget at 60 fps |
+| Low-end integrated GPU           | 50 fps at rest, 74 fps in flight                           |
+| Budget laptop (simulated)        | 38–71 fps while interacting; inputs answered within 120 ms |
+| Lighthouse (desktop)             | Performance 73–77; Accessibility, Best practices, SEO 100  |
 | Download before the scene starts | ~340 KB of HTML, code and font                             |
 
-Measured in Chrome on a laptop's RTX 5050 and on its integrated Radeon 610M;
-`npm run bench` reproduces them. The page also loads and runs in WebKit,
-Safari's engine.
-
-<!-- FILL: any response you have had: feedback, shares, an award, or what
-     people did first when they opened it. Leave out if none yet. -->
+Measured in Chrome on one laptop, using its discrete GPU and its low-end
+integrated GPU. The page also loads and renders correctly in WebKit,
+Safari's engine. The hardware, method and the commands that reproduce each
+figure are in [PERFORMANCE.md](PERFORMANCE.md#test-setup).
 
 ## Reflection
 
 **What worked.** Setting the principles first. "Light is the only thing that
-moves the story" settled dozens of later questions, from leaving out
-roads, traffic and neighbouring towers to keeping the interface to one accent colour.
+moves the story" settled dozens of later questions, from leaving out roads,
+traffic and neighbouring towers to keeping the interface to one accent
+colour.
 
-**What was hard.** <!-- FILL: in your own words. For example: keeping a
-detailed scene calm, getting the springs to feel heavy but not slow, or
-deciding what to leave out. -->
+**What was hard.** Keeping a detailed scene smooth on weak integrated
+graphics without making it look cheap. The answer was a quality governor
+that gives up the least visible things first (sharpness, then bloom, then
+the pool's reflection, then multisampling) and never steps back up, so the
+picture never flickers between levels.
 
 **What I would do next.**
 
