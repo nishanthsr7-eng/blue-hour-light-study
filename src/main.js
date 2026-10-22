@@ -1,7 +1,9 @@
-/* Entry point. Loads the stylesheet, checks for WebGL 2, then starts the
-   scene (app.js imports it step by step). vite.config.js preloads every
-   chunk from the HTML, so nothing waits on this file to be discovered. */
+/* Entry point. Loads the stylesheet, checks for WebGL 2 and a desktop-sized
+   window, then starts the scene (app.js imports it step by step).
+   vite.config.js preloads every chunk from the HTML on a desktop, so nothing
+   waits on this file to be discovered. */
 import './styles/main.css';
+import { NOT_DESKTOP } from './core/desktop.js';
 
 const veil = document.getElementById('veil');
 const step = document.getElementById('veilStep');
@@ -25,31 +27,20 @@ function start() {
   });
 }
 
-// The study is built for desktop: a mouse or trackpad, a keyboard and a laptop
-// GPU. On a phone or tablet (touch is the only pointer), say so before any
-// texture or shader work starts, and leave the choice to load it anyway.
-function desktopOnly() {
-  veil.classList.add('is-error', 'is-desktop-only');
-  step.textContent = 'Blue Hour is a desktop study. Open it on a laptop or desktop for the full scene.';
-  const anyway = document.createElement('button');
-  anyway.type = 'button';
-  anyway.className = 'veil__anyway';
-  anyway.textContent = 'Load anyway';
-  anyway.addEventListener('click', () => {
-    anyway.remove();
-    veil.classList.remove('is-error', 'is-desktop-only');
-    step.textContent = 'Painting surfaces';
+// Below desktop size, or on a touch-only device, nothing loads: the page shows
+// only its desktop notice (main.css). If a small desktop window is enlarged,
+// the scene starts then.
+const small = matchMedia(NOT_DESKTOP);
+if (typeof WebGL2RenderingContext === 'undefined') {
+  // A cheap check first; a GPU that is present but blocklisted fails later,
+  // when three.js creates its context, and lands in the catch in start().
+  fail(WEBGL_MESSAGE);
+} else if (small.matches) {
+  small.addEventListener('change', function grown() {
+    if (small.matches) return;
+    small.removeEventListener('change', grown);
     start();
   });
-  step.after(anyway);
-}
-
-// A cheap check first; a GPU that is present but blocklisted fails later,
-// when three.js creates its context, and lands in the catch in start().
-if (typeof WebGL2RenderingContext === 'undefined') {
-  fail(WEBGL_MESSAGE);
-} else if (matchMedia('(hover: none) and (pointer: coarse)').matches) {
-  desktopOnly();
 } else {
   start();
 }

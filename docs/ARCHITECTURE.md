@@ -16,10 +16,11 @@ How the page starts, how the scene is built, and how a frame is drawn.
 
 ```text
 index.html ─┬─ inlined CSS and loading screen
-            ├─ preload: font and every JavaScript chunk
+            ├─ preload: font; every JavaScript chunk on a desktop-sized window
             └─ src/main.js
                  ├─ no WebGL 2       → message on the loading screen
-                 ├─ touch-only device → desktop notice, "Load anyway"
+                 ├─ under 1024 × 540, or touch-only (core/desktop)
+                 │                   → the notice only; starts if the window grows
                  └─ src/app.js: import each build step in order
                       textures/procedural → paint surfaces in workers
                       core/scene          → renderer, sky, lights, environment, post
@@ -45,8 +46,9 @@ src/
 ├── study/            Light timeline, untwist, window clicks, rain, seasons, sound
 ├── ui/               Loading progress, time bar, orbit, controls
 ├── styles/           Interface styles and design tokens
-└── assets/           Font, scanned textures, loading backdrops
-scripts/              bench.mjs (benchmark), capture.mjs (screenshots)
+└── assets/           Font, scanned textures, night ambience
+scripts/              bench.mjs, bench-lowend.mjs, bench-webkit.mjs (benchmarks), capture.mjs (screenshots),
+                      record.mjs (season loop video)
 public/               Icons, social image, 404 page, Cloudflare headers
 ```
 
@@ -80,14 +82,21 @@ seasons and shader clocks, then one matrix update and one composer render.
   visible frame never pays for compilation.
 - **Idle:** after 6 s with no input and nothing moving, drawing drops to
   about 30 fps.
-- **Quality governor:** sustained slow frames step down pixel ratio, then
-  bloom, then mirror quality. It never steps back up, so nothing flickers.
+- **Quality governor:** 1.5 s of slow frames steps down one of five levels
+  (two when frames are far over budget): pixel ratio, then bloom, then mirror
+  quality, then multisampling. Low-spec devices start at level 2. It never
+  steps back up, so nothing flickers.
+- **Desktop size:** a window shrunk below 1024 × 540 stops the loop and
+  suspends the sound; both resume when the window is large again.
 
 ## Build
 
 Vite, with three small plugins in `vite.config.js`: one fills the site URL
-and writes `robots.txt` and `sitemap.xml`, one preloads every chunk and the
-font, and one inlines the stylesheet. Assets are content-hashed and cached
+and writes `robots.txt` and `sitemap.xml`, one preloads the font and (on a
+desktop-sized window, through an inline script whose hash it adds to the CSP
+in `_headers`) every chunk, and one inlines the stylesheet. The desktop query
+(`core/desktop.js`) has its own chunk, so no scene chunk depends on the entry
+chunk or waits on its inlined stylesheet. Assets are content-hashed and cached
 for a year.
 
 ## Debugging

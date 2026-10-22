@@ -36,9 +36,12 @@ addEventListener('pointerup', (e) => {
   // Forgiving by 3.5 m (the slab overhang): a click on a mullion, spandrel or slab edge in front of a room counts.
   const room = pickRay.intersectObjects(ROOM_SHELLS, false)[0];
   if (!room) return;
+  // Only what lies in front of the room can block it: meshes wholly behind are skipped.
+  pickRay.far = room.distance + 3.5;
   const block = pickRay
     .intersectObject(building, true)
     .find((h) => h.object.visible && !h.object.material.transparent && h.object.userData.zone == null);
+  pickRay.far = Infinity;
   if (!block || room.distance < block.distance + 3.5) toggleZone(room.object.userData.zone);
 });
 addEventListener('pointermove', (e) => {

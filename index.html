@@ -46,7 +46,7 @@
         "@context": "https://schema.org",
         "@type": "CreativeWork",
         "name": "Blue Hour: A Light Study",
-        "alternateName": "Residence 07, Light Study / 01",
+        "alternateName": "Lantern House, A Light Study",
         "description": "An interactive WebGL light study of a twisting residential tower switching on, floor by floor, as blue hour turns to night.",
         "url": "%SITE_URL%/",
         "image": "%SITE_URL%/og-image.jpg",
@@ -70,9 +70,9 @@
     ></canvas>
     <div class="vignette"></div>
 
-    <h1 class="title">Blue Hour — <b>Light Study / 01</b></h1>
+    <h1 class="title">Blue Hour — <b>A Light Study</b></h1>
     <p class="sr-only">
-      An interactive study of light on one building, Residence 07: a sculptural tower of twisting white slabs with a
+      An interactive study of light on one building, Lantern House: a sculptural tower of twisting white slabs with a
       glazed lobby, ten residential floors and a penthouse pool. The scene opens at blue hour with the house dark, then
       the sky deepens and the house switches on, from the lobby up to the beacon. Scroll to fly a drone up the tower,
       drag to untwist the slabs, click a window to switch that floor's lights, and change the season or the weather.
@@ -90,7 +90,7 @@
     <div class="hud">
       <div class="hud__clock" id="hudClock">18:56</div>
       <div>Rooms lit · <em id="hudRooms">0</em>%</div>
-      <div id="hudName">Residence 07 · Arrival</div>
+      <div id="hudName">Lantern House · Arrival</div>
       <div>Height · <em id="hudH">+1.0</em> m</div>
     </div>
 
@@ -124,12 +124,21 @@
     </div>
     <div class="toggles">
       <button class="tg" id="rainBtn" aria-pressed="false">Rain</button>
-      <button class="tg tg--plain" id="seasonBtn" aria-label="Season: autumn">Autumn</button>
-      <button class="tg" id="soundBtn" aria-pressed="false">Sound</button>
-      <button class="tg" id="muteBtn" aria-pressed="false">Mute</button>
+      <button
+        class="tg tg--season"
+        id="seasonBtn"
+        aria-label="Season: autumn. Press S for the next season"
+        title="Next season (S)"
+      >
+        <span id="seasonName">Autumn</span><kbd aria-hidden="true">S</kbd>
+      </button>
+      <button class="tg" id="soundBtn" aria-pressed="true">Sound</button>
+      <button class="tg" id="muteBtn" aria-pressed="true">Mute</button>
       <button class="tg tg--plain" id="keysBtn" aria-expanded="false" aria-controls="keys">Controls</button>
     </div>
     <dl class="keys" id="keys" hidden>
+      <dt>S</dt>
+      <dd>Next season · or click the season button</dd>
       <dt>Drag</dt>
       <dd>Untwist the tower</dd>
       <dt>Shift-drag</dt>
@@ -141,7 +150,7 @@
       <dt>Scroll</dt>
       <dd>Rise up the tower</dd>
       <dt>↑ ↓</dt>
-      <dd>Previous / next level</dd>
+      <dd>Next / previous level</dd>
       <dt>Click a window</dt>
       <dd>Switch that floor's lights</dd>
       <dt>Space</dt>
@@ -150,8 +159,6 @@
       <dd>Replay from blue hour</dd>
       <dt>Time bar</dt>
       <dd>Drag to any minute, 18:56 – 00:40 · ← → when focused</dd>
-      <dt>S</dt>
-      <dd>Next season</dd>
       <dt>P</dt>
       <dd>Light pattern across the floors</dd>
       <dt>M</dt>
@@ -163,7 +170,7 @@
     <div class="veil" id="veil" role="status" aria-live="polite">
       <div class="veil__inner">
         <p class="veil__name" aria-hidden="true">Blue Hour</p>
-        <p class="veil__title">Light Study / 01</p>
+        <p class="veil__title">A Light Study</p>
         <div class="veil__bar"><i id="veilBar"></i></div>
         <p class="veil__step" id="veilStep">Painting surfaces</p>
         <noscript>
@@ -175,6 +182,15 @@
           </style>
           <p class="veil__step">This light study runs in WebGL and needs JavaScript.</p>
         </noscript>
+      </div>
+    </div>
+
+    <div class="desk-only" role="alert">
+      <div>
+        <p class="desk-only__name">Blue Hour</p>
+        <p class="desk-only__note">
+          A desktop light study. Open it on a laptop or desktop, in a window at least 1024 pixels wide.
+        </p>
       </div>
     </div>
 

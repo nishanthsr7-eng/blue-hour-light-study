@@ -17,6 +17,7 @@ import {
 import { renderer, scene, sun } from '../core/scene.js';
 import { useScan } from '../textures/scanned.js';
 import { M } from './materials.js';
+import { SNOW_GLINT, SNOW_GLSL } from './snow.js';
 
 /* ════════════════════════════════════════════════════════════════════════
    Ground-level kit: extra textures, rounded parts, light/AO decals,
@@ -134,6 +135,49 @@ useScan(M.fascia, 'brushed_concrete', 2.5, ['normalMap', 'roughnessMap']);
 useScan(M.timber, 'oak_veneer_01', 1.2);
 useScan(M.bark, 'sakura_bark', 1);
 
+/* Weathering on the fascias: the scan gives only relief and roughness, so a
+   clean white slab can read as CG up close. Rain washes dust down each edge
+   and leaves it at the drip line: a soft grey band along the underside with
+   uneven vertical streaks, and a faint line of grit on the top arris. */
+{
+  const prev = M.fascia.onBeforeCompile;
+  M.fascia.onBeforeCompile = (sh, r) => {
+    prev.call(M.fascia, sh, r);
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vGrP, vGrL, vGrN;')
+      .replace(
+        '#include <project_vertex>',
+        /* glsl */ `#include <project_vertex>
+        vGrL = transformed;
+        vGrP = (modelMatrix * vec4(transformed, 1.0)).xyz;
+        vGrN = normalize(mat3(modelMatrix) * objectNormal);`,
+      );
+    sh.fragmentShader = sh.fragmentShader
+      .replace(
+        '#include <common>',
+        /* glsl */ `#include <common>
+        varying vec3 vGrP, vGrL, vGrN;
+        float grH(float x) { return fract(sin(x * 127.1) * 43758.5453); }
+        float grN(float x) { float i = floor(x), f = fract(x); return mix(grH(i), grH(i + 1.0), f * f * (3.0 - 2.0 * f)); }`,
+      )
+      .replace(
+        '#include <map_fragment>',
+        /* glsl */ `#include <map_fragment>
+        {
+          float side = 1.0 - smoothstep(0.35, 0.7, abs(vGrN.y));
+          float u = vGrP.x * 0.83 + vGrP.z * 1.17; // runs along the edge
+          float streak = grN(u * 9.0) * 0.6 + grN(u * 31.0) * 0.4;
+          float reach = 0.08 + 0.2 * streak * streak; // some streaks run further up the face
+          float drip = smoothstep(reach, 0.0, vGrL.y) * (0.55 + 0.45 * streak);
+          float grit = smoothstep(0.03, 0.0, abs(vGrL.y - 0.33)) * 0.25;
+          float patchy = 0.7 + 0.3 * grN(u * 2.3 + vGrP.y * 0.7);
+          diffuseColor.rgb *= 1.0 - side * (drip * 0.22 + grit) * patchy * vec3(1.0, 1.02, 1.06);
+        }`,
+      );
+  };
+  M.fascia.customProgramCacheKey = () => 'fascia-grime';
+}
+
 /* Rain has just stopped: flat stone darkens, gloss rises, and hollows
    hold mirror-flat puddles. A world-space noise field drives all three,
    so the pattern never repeats with the paver tile. */
@@ -154,7 +198,8 @@ function wetify(mat) {
         float wetN(vec2 p) {
           vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
           return mix(mix(wetH(i), wetH(i + vec2(1.0, 0.0)), f.x), mix(wetH(i + vec2(0.0, 1.0)), wetH(i + vec2(1.0, 1.0)), f.x), f.y);
-        }`,
+        }
+        ${SNOW_GLSL}`,
       )
       .replace(
         '#include <roughnessmap_fragment>',
@@ -169,13 +214,14 @@ function wetify(mat) {
         roughnessFactor = mix(roughnessFactor, roughnessFactor * 0.4, damp);
         roughnessFactor = mix(roughnessFactor, 0.04, puddle);
         diffuseColor.rgb *= mix(1.0, 0.58, max(damp * 0.6, puddle));
-        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.8, 0.83, 0.88), snowK);
+        diffuseColor.rgb = mix(diffuseColor.rgb, SNOW_COL, snowK);
         roughnessFactor = mix(roughnessFactor, 0.9, snowK);`,
       )
       .replace(
         '#include <normal_fragment_maps>',
         /* glsl */ `#include <normal_fragment_maps>
-        normal = normalize(mix(normal, normalize(vNormal) * faceDirection, puddle));`,
+        normal = normalize(mix(normal, normalize(vNormal) * faceDirection, puddle));
+        normal = normalize(normal + snowK * (viewMatrix * vec4(snBump(vWetPos), 0.0)).xyz);`,
       )
       .replace(
         '#include <opaque_fragment>',
@@ -201,6 +247,7 @@ function wetify(mat) {
           }
           outgoingLight += glint * wet;
         }
+        outgoingLight += ${SNOW_GLINT} * snowK * snSparkle(vWetPos);
         #include <opaque_fragment>`,
       );
     s.fragmentShader = s.fragmentShader.replace(

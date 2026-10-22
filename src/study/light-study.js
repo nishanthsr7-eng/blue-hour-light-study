@@ -163,7 +163,7 @@ const hudText = (el, v) => {
   if (el.textContent === v) return;
   const up = el === countN && v > el.textContent;
   el.textContent = v;
-  if (REDUCED || !el.isConnected) return;
+  if (REDUCED || !el.isConnected || el === hudClock) return; // the clock runs too fast to flash
   el.classList.remove('is-tick', 'is-roll');
   void el.offsetWidth;
   el.classList.add(up ? 'is-roll' : 'is-tick');
@@ -291,13 +291,12 @@ export function lightUp(dt) {
     const k = MARKS[+btn.dataset.k].zone;
     btn.classList.toggle('is-lit', k != null && isLit(k, z));
   });
-  // A click and hum as each level comes on while playing forward (not while scrubbing); a click as one goes off.
+  // A chime as each level comes on while playing forward (not while scrubbing); a low note as one goes off.
   for (let k = 0; k < 13; k++) {
     if (seq.playing && zonePrev[k] < 0.02 && z[k] >= 0.02) sound.level(k);
     if (seq.playing && zonePrev[k] > 0.5 && z[k] <= 0.5) sound.off();
     zonePrev[k] = z[k];
   }
-  sound.zones((k) => isLit(k, z));
   return true;
 }
 // Switch a zone by hand (a click on its glass).

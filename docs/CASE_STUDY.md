@@ -1,12 +1,8 @@
 # Case study: Blue Hour, a light study
 
 <p>
-  <img src="media/arrival.jpg" alt="Residence 07 at blue hour: a white twisting tower, its floors lit warm against a deep blue sky." width="100%" />
+  <img src="media/arrival.jpg" alt="Lantern House at blue hour: a white twisting tower, its floors lit warm against a deep blue sky." width="100%" />
 </p>
-
-<!-- FILL: replace the image above with a 10–15 s screen recording of the
-     light-up (18:56 → 19:42) as an MP4 or GIF. It is the strongest single
-     asset for this case study. -->
 
 |              |                                                                                                                                     |
 | ------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
@@ -22,7 +18,7 @@ around. I wanted to try the opposite: a page with almost no interface, where
 **light tells the story** and the visitor watches a building come to life at
 nightfall.
 
-The result is an interactive study of one fictional tower, Residence 07. The
+The result is an interactive study of one fictional tower, Lantern House. The
 page opens at 18:56, at blue hour, with the house dark. Over a few seconds
 the sky deepens and the house switches on, floor by floor. Visitors can then
 scrub through the evening, fly up the tower, untwist it, change the season
@@ -155,20 +151,19 @@ else is one key away: `?` opens the full list of controls.
 floor. The cursor changes over windows, so the affordance is discovered by
 exploring rather than explained.
 
-**The loading screen is part of the piece.** It shows the title over a
-blurred first frame of the scene, with a thin red line tracking real
-progress. When the scene is ready, it fades in over its own likeness, so
-there is no jump from loading to content.
+**The loading screen is part of the piece.** It shows the title on a
+dark field with a thin red line tracking real progress. When the scene is
+ready, it fades in from that dark, as night does.
 
-**Sound is opt-in.** A synthesised night ambience, rain or crickets, and a
-soft tone as each floor switches on, rising in pitch so a fully lit tower
-becomes a chord. It is off until asked for, because autoplaying sound on a
-portfolio page is hostile.
+**Sound waits for the visitor.** A field recording of a meadow at night,
+with synthesised rain, seasonal wind and a soft chime as each floor switches
+on, rising in pitch up the tower. It is on by default but stays silent until
+the first click or key, and Sound and Mute are always one press away.
 
 **Desktop only, by choice.** The study depends on a pointer, a keyboard and
-a laptop-class GPU. Rather than ship a compromised phone version, phones and
-tablets get a clear notice over a still of the lit tower, with the option to
-load it anyway.
+a laptop-class GPU. Rather than ship a compromised phone version, any window
+under 1024 × 540, and any touch-only device, gets a single line saying so:
+nothing of the scene is downloaded or run there.
 
 **Accessibility.** Keyboard access to every control, visible focus states,
 a text description of the scene for screen readers, and the reduced-motion
@@ -192,16 +187,19 @@ The technical detail is in [ARCHITECTURE.md](ARCHITECTURE.md) and
 
 ## Outcome
 
-| Measure                          | Result                                        |
-| -------------------------------- | --------------------------------------------- |
-| First paint                      | 0.7 s, with zero layout shift                 |
-| Scene on screen                  | ~1.9 s (repeat visit), ~2.9 s (first visit)   |
-| Work per frame                   | ~9 ms of a 16.7 ms budget at 60 fps           |
-| Lighthouse (desktop)             | Accessibility, Best practices and SEO all 100 |
-| Download before the scene starts | ~320 KB of HTML, code and font                |
+| Measure                          | Result                                                     |
+| -------------------------------- | ---------------------------------------------------------- |
+| First paint                      | 0.5 s, with zero layout shift                              |
+| Scene on screen                  | 2.7 s (repeat visit), 3.7 s (first visit)                  |
+| Work per frame                   | ~9 ms of a 16.7 ms budget at 60 fps                        |
+| Low-end integrated GPU           | 50 fps at rest, 74 fps in flight (Radeon 610M)             |
+| Budget laptop                    | 38–71 fps while interacting; inputs answered within 120 ms |
+| Lighthouse (desktop)             | Accessibility, Best practices and SEO all 100              |
+| Download before the scene starts | ~340 KB of HTML, code and font                             |
 
-Measured on a laptop with an RTX 5050 GPU in Chrome; `npm run bench`
-reproduces them.
+Measured in Chrome on a laptop's RTX 5050 and on its integrated Radeon 610M;
+`npm run bench` reproduces them. The page also loads and runs in WebKit,
+Safari's engine.
 
 <!-- FILL: any response you have had: feedback, shares, an award, or what
      people did first when they opened it. Leave out if none yet. -->

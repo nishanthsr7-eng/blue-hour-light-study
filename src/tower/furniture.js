@@ -704,7 +704,7 @@ export const THEMES = {
         -3.9 + Math.sin(k) * 0.1,
         g,
       ).rotation.set(Math.sin(k) * 0.15, 0, Math.cos(k) * 0.15);
-    // Model table: Residence 07 at 1:100, its ten slabs twisting up a core.
+    // Model table: Lantern House at 1:100, its ten slabs twisting up a core.
     at(rbox(1.6, 0.06, 1.0, MI.walnut, 0.012), -3.4, F + 0.75, 1.4, g);
     legs(grp(g, -3.4, F, 1.4), 0.72, 0.42, 0.72, M.steel, 0.015);
     at(rbox(0.42, 0.03, 0.36, MI.paper, 0.004), -3.4, F + 0.795, 1.4, g);

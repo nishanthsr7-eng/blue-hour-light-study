@@ -291,12 +291,13 @@ export const skyMat = new THREE.ShaderMaterial({
     uSkyMul: { value: new THREE.Vector3(1, 1, 1) },
     uHorAdd: { value: new THREE.Vector3() },
     uCloudK: { value: 1 },
+    uHalo: { value: 1 },
   },
   vertexShader: /* glsl */ `
     varying vec3 vDir;
     void main() { vDir = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
   fragmentShader: /* glsl */ `
-    uniform vec3 uSun, uSkyMul, uHorAdd; uniform float uTime, uDusk, uCloudK; uniform sampler2D uMoon; varying vec3 vDir;
+    uniform vec3 uSun, uSkyMul, uHorAdd; uniform float uTime, uDusk, uCloudK, uHalo; uniform sampler2D uMoon; varying vec3 vDir;
     float hash(vec3 p) { return fract(sin(dot(p, vec3(12.9898, 78.233, 37.719))) * 43758.5453); }
     float h2(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
     float n2(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
@@ -354,11 +355,19 @@ export const skyMat = new THREE.ShaderMaterial({
       const float CT = ${Math.cos(MOON_TILT).toFixed(4)}, ST = ${Math.sin(MOON_TILT).toFixed(4)};
       vec2 lm = vec2(CT * mp.x + ST * mp.y, -ST * mp.x + CT * mp.y); // screen → lunar east/north
       float alb = texture2D(uMoon, lm * 0.5 + 0.5).r; // flipY: canvas top (north) is v = 1
-      vec3 moon = vec3(1.0, 0.97, 0.92) * (0.18 + 0.82 * alb) * (0.97 + 0.03 * length(mp)); // kept below white so the maria read
+      // Small craters below the map's resolution: pits with a bright rim, so the
+      // highlands look pocked rather than airbrushed, and a slight fall-off at the limb.
+      vec2 cg = lm * 26.0, ci = floor(cg), cf = fract(cg) - 0.5;
+      float cr = 0.18 + 0.22 * h2(ci + 3.1), cd = length(cf + (vec2(h2(ci), h2(ci + 7.7)) - 0.5) * 0.3);
+      float pit = step(0.55, h2(ci + 1.3)) * (smoothstep(cr, cr * 0.4, cd) * 0.16 - smoothstep(cr * 0.6, cr, cd) * smoothstep(cr * 1.3, cr, cd) * 0.07);
+      alb *= 1.0 - pit + (n2(lm * 70.0) - 0.5) * 0.08;
+      float limb = sqrt(max(1.0 - dot(mp, mp), 0.0));
+      vec3 moon = vec3(1.0, 0.97, 0.92) * (0.18 + 0.82 * alb) * (0.86 + 0.14 * limb); // kept below white so the maria read
       disc *= step(0.9, s); // the projection repeats on the far side of the sky
       c = mix(c, moon, disc * (1.0 - cov * 0.55));
       // Halo: a tight bright corona and a wide cool bloom, both outside the disc.
-      c += (vec3(0.55, 0.6, 0.75) * exp(-th / 0.045) * 0.5 + vec3(0.16, 0.2, 0.32) * exp(-th / 0.16) * 0.35) * (1.0 - disc);
+      // Its strength follows the season: crisp winter air carries the widest ring.
+      c += (vec3(0.55, 0.6, 0.75) * exp(-th / 0.045) * 0.5 + vec3(0.16, 0.2, 0.32) * exp(-th / (0.12 + 0.05 * uHalo)) * 0.35 * uHalo) * (1.0 - disc);
       c = mix(c, vec3(0.012, 0.012, 0.02), smoothstep(0.0, -0.06, h));
       gl_FragColor = vec4(c, 1.0);
     }`,

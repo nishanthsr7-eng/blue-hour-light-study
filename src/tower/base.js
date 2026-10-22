@@ -2,8 +2,9 @@ import * as THREE from 'three';
 import { Reflector } from 'three/addons/objects/Reflector.js';
 import { mulberry, REDUCED, TAU, yieldToBrowser } from '../core/util.js';
 import { waterNormal } from '../textures/procedural.js';
-import { scene } from '../core/scene.js';
+import { scene, SNOW_COVER } from '../core/scene.js';
 import { M } from '../world/materials.js';
+import { SNOW_GLSL } from '../world/snow.js';
 import { extrude, flat, mullions, outlineTube, parts, put, rrect } from '../world/geometry.js';
 import { ao, at, building, decal, haloSign, rbox, washMat } from '../world/kit.js';
 
@@ -123,16 +124,23 @@ export const FLOOR = 1.0; // plinth top
         tNormal: { value: null },
         uTime: { value: 0 },
         uRipple: { value: REDUCED ? 0 : 1 },
+        uIce: { value: 0 },
       },
       vertexShader: /* glsl */ `
         uniform mat4 textureMatrix; varying vec4 vUv; varying vec3 vW;
         void main() { vUv = textureMatrix * vec4(position, 1.0); vW = (modelMatrix * vec4(position, 1.0)).xyz; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
       fragmentShader: /* glsl */ `
-        uniform vec3 color; uniform sampler2D tDiffuse, tNormal; uniform float uTime, uRipple; varying vec4 vUv; varying vec3 vW;
+        uniform vec3 color; uniform sampler2D tDiffuse, tNormal; uniform float uTime, uRipple, uIce; varying vec4 vUv; varying vec3 vW;
         float rh(float x) { return fract(sin(x * 91.3) * 43758.5453); }
+        ${SNOW_GLSL}
         void main() {
-          vec2 n = texture2D(tNormal, vW.xz * 0.05 + vec2(uTime * 0.006, uTime * 0.004)).xy * 2.0 - 1.0;
-          n += texture2D(tNormal, vW.xz * 0.17 - vec2(uTime * 0.004, -uTime * 0.007)).xy * 2.0 - 1.0;
+          // Winter freezes the pool as the snow settles: the water stills, the
+          // reflection dulls to a frosted smear, and the ice crazes with cracks.
+          float ice = uIce, rip = uRipple * (1.0 - ice);
+          float frost = snN(vW.xz * 1.6) * 0.6 + snN(vW.xz * 7.0) * 0.4;
+          vec2 n = (texture2D(tNormal, vW.xz * 0.05 + vec2(uTime * 0.006, uTime * 0.004)).xy * 2.0 - 1.0) * (1.0 - ice);
+          n += (texture2D(tNormal, vW.xz * 0.17 - vec2(uTime * 0.004, -uTime * 0.007)).xy * 2.0 - 1.0) * (1.0 - ice);
+          n += (vec2(frost, snN(vW.zx * 1.6 + 7.0)) - 0.5) * 6.0 * ice;
           // Late drips off the canopy and trees: a few rings at a time, each
           // spreading and fading, bending the reflection instead of drawing a line.
           float ring = 0.0;
@@ -141,18 +149,40 @@ export const FLOOR = 1.0; // plinth top
             vec2 c = vec2(-10.5, 10.5) + (vec2(rh(cyc + fi * 7.1), rh(cyc * 1.7 + fi * 3.3)) - 0.5) * vec2(13.0, 6.5);
             vec2 dv = vW.xz - c; float dd = length(dv), x = dd - age * 1.8;
             float w = sin(x * 26.0) * exp(-x * x * 40.0) * (1.0 - age) * (1.0 - age);
-            n += dv / max(dd, 1e-3) * w * 1.4 * uRipple; ring += max(w, 0.0) * uRipple;
+            n += dv / max(dd, 1e-3) * w * 1.4 * rip; ring += max(w, 0.0) * rip;
           }
           vec4 uv = vUv; uv.xy += n * 0.006 * uv.w;
           vec3 refl = texture2DProj(tDiffuse, uv).rgb;
           vec3 v = normalize(cameraPosition - vW);
           float fr = 0.35 + 0.65 * pow(1.0 - max(v.y, 0.0), 4.0);
           // The reflection target is already tone-mapped sRGB (see anchors.mirror below).
-          gl_FragColor = vec4(color * refl * fr + vec3(0.003, 0.005, 0.007) + vec3(0.02, 0.024, 0.032) * ring, 1.0);
+          vec3 col = color * refl * fr + vec3(0.003, 0.005, 0.007) + vec3(0.02, 0.024, 0.032) * ring;
+          if (ice > 0.0) {
+            // Cracks: the edges of a Voronoi cell field, a few long plates with finer crazing.
+            vec2 g = vW.xz * 0.8, gi = floor(g), gf = fract(g);
+            float d1 = 8.0, d2 = 8.0;
+            for (int y = -1; y <= 1; y++)
+              for (int x = -1; x <= 1; x++) {
+                vec2 o = vec2(float(x), float(y)), c = gi + o;
+                vec2 r = o + vec2(rh(c.x * 7.1 + c.y * 31.7), rh(c.x * 17.3 + c.y * 5.9)) - gf;
+                float d = dot(r, r);
+                if (d < d1) { d2 = d1; d1 = d; } else if (d < d2) d2 = d;
+              }
+            float crack = 1.0 - smoothstep(0.0, 0.03, sqrt(d2) - sqrt(d1));
+            crack = max(crack, 0.5 * (1.0 - smoothstep(0.0, 0.05, abs(snN(vW.xz * 3.0) - 0.5))));
+            // Snow dusts the ice in drifts, thickest where it blew against the coping.
+            float dust = smoothstep(0.45, 0.8, snDrift(vW.xz * 1.4) + frost * 0.2);
+            vec3 iceCol = vec3(0.05, 0.065, 0.09) * (0.7 + 0.6 * frost) + refl * 0.18 + vec3(0.1, 0.11, 0.13) * crack;
+            iceCol = mix(iceCol, vec3(0.42, 0.45, 0.52) * (0.85 + 0.3 * frost), dust * 0.85);
+            iceCol += vec3(0.5, 0.56, 0.7) * snSparkle(vW) * (0.4 + dust);
+            col = mix(col, iceCol, ice);
+          }
+          gl_FragColor = vec4(col, 1.0);
         }`,
     },
   });
   mirror.material.uniforms.tNormal.value = waterNormal;
+  mirror.material.uniforms.uIce = SNOW_COVER; // Reflector clones its uniforms; share the live one
   mirror.rotation.x = -Math.PI / 2;
   mirror.position.y = 1.03;
   building.add(mirror);

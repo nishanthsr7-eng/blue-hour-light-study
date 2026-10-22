@@ -37,3 +37,13 @@ npm run build
 ```bash
 npm run capture
 ```
+
+To refresh the season loop for the README, record it (also needs ffmpeg on
+the PATH), then upload `recordings/season-loop.mp4` to GitHub:
+
+```bash
+npm run record
+```
+
+`public/_headers` lists `script-src 'self'`; the build adds the hash of its
+one inline script (the desktop-only chunk preloader) to `dist/_headers`.

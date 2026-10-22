@@ -18,7 +18,10 @@
     "format:check": "prettier --check .",
     "check": "npm run lint && npm run format:check && npm run build",
     "capture": "node scripts/capture.mjs",
-    "bench": "node scripts/bench.mjs"
+    "record": "node scripts/record.mjs",
+    "bench": "node scripts/bench.mjs",
+    "bench:webkit": "node scripts/bench-webkit.mjs",
+    "bench:lowend": "node scripts/bench-lowend.mjs"
   },
   "dependencies": {
     "three": "0.170.0"
@@ -27,6 +30,7 @@
     "@eslint/js": "^9.39.5",
     "eslint": "^9.39.5",
     "globals": "^17.13.0",
+    "playwright": "^1.56.1",
     "prettier": "^3.9.10",
     "puppeteer-core": "^25.15.0",
     "vite": "^6.4.4"

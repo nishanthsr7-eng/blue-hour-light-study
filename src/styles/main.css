@@ -370,12 +370,14 @@ canvas {
   cursor: pointer;
   padding: 8px 14px;
   border-radius: 999px;
-  background: none;
-  color: var(--bone-faint);
-  border: 1px solid rgba(244, 244, 246, 0.14);
+  background: rgba(10, 11, 16, 0.55);
+  backdrop-filter: blur(6px);
+  color: var(--bone-dim);
+  border: 1px solid rgba(244, 244, 246, 0.28);
   transition:
     color 0.4s var(--ease),
-    border-color 0.4s var(--ease);
+    border-color 0.4s var(--ease),
+    background-color 0.4s var(--ease);
 }
 .tg::before {
   content: '';
@@ -386,11 +388,12 @@ canvas {
   margin-right: 8px;
   vertical-align: 1px;
   background: currentColor;
-  opacity: 0.5;
+  opacity: 0.6;
 }
 .tg[aria-pressed='true'] {
   color: var(--bone);
-  border-color: rgba(244, 244, 246, 0.4);
+  border-color: rgba(244, 244, 246, 0.55);
+  background-color: rgba(244, 244, 246, 0.08);
 }
 .tg[aria-pressed='true']::before {
   background: var(--red);
@@ -399,10 +402,40 @@ canvas {
 .tg:hover,
 .tg:focus-visible {
   color: var(--bone);
+  border-color: rgba(244, 244, 246, 0.6);
   outline: none;
 }
 .tg--plain::before {
   display: none;
+}
+/* The season button cycles, so it shows a turning arrow and its key. */
+.tg--season::before {
+  width: 7px;
+  height: 7px;
+  border: 1.5px solid currentColor;
+  border-right-color: transparent;
+  background: none;
+  vertical-align: -1px;
+  opacity: 0.85;
+  transition: transform 0.6s var(--ease);
+}
+.tg--season:hover::before,
+.tg--season:focus-visible::before {
+  transform: rotate(180deg);
+}
+.tg--season {
+  color: var(--bone);
+  border-color: rgba(244, 244, 246, 0.45);
+}
+.tg kbd {
+  font: inherit;
+  font-size: 9px;
+  letter-spacing: 0;
+  margin-left: 8px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  border: 1px solid rgba(244, 244, 246, 0.35);
+  color: var(--bone-dim);
 }
 .tg--plain[aria-expanded='true'] {
   color: var(--bone);
@@ -561,10 +594,8 @@ body.is-window:not(.is-dragging) {
 .veil {
   display: grid;
   place-items: center;
-  /* The scene's first frame, 96 × 54 and blurred (scripts/capture.mjs),
-     inlined as a data URI: the loading screen already holds the evening's
-     colour, and the live scene fades in over its own likeness. */
-  background: #050508 url('../assets/veil-poster.webp') center / cover no-repeat;
+  /* A plain dark field, faintly lifted at the centre behind the name. */
+  background: radial-gradient(ellipse 80% 70% at 50% 45%, #0c0d12, #050507 70%, #020203);
 }
 .veil::before {
   content: '';
@@ -690,38 +721,44 @@ body.is-intro .hints {
   letter-spacing: 0.16em;
   color: var(--bone-dim);
 }
-/* Phones and tablets: the notice over the whole tower lit at night (a sharp
-   portrait still from scripts/capture.mjs, fetched only here), and a quiet way past it. */
-.veil.is-desktop-only {
-  background-image: url('../assets/phone-poster.webp');
-  background-position: center top;
-}
-.veil.is-desktop-only::before {
-  background: linear-gradient(
-    rgba(5, 5, 8, 0.15) 0%,
-    rgba(5, 5, 8, 0.55) 35%,
-    rgba(5, 5, 8, 0.78) 50%,
-    rgba(5, 5, 8, 0.55) 65%,
-    rgba(5, 5, 8, 0.2) 100%
-  );
-}
-.veil.is-desktop-only .veil__bar {
+/* Desktop only (src/core/desktop.js): below 1024 × 540, or where touch is the
+   only pointer, the page is just this notice. Nothing else shows, and main.js
+   never loads the scene. Keep the query in step with NOT_DESKTOP. */
+.desk-only {
   display: none;
 }
-.veil__anyway {
-  margin-top: 26px;
-  padding: 10px 18px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: rgba(5, 5, 8, 0.6);
-  font: 600 9px/1 var(--f-ui);
-  letter-spacing: 0.2em;
+@media (max-width: 1023.98px), (max-height: 539.98px), (hover: none) and (pointer: coarse) {
+  html,
+  body {
+    overflow: hidden;
+  }
+  body > :not(.desk-only) {
+    display: none !important;
+  }
+  .desk-only {
+    position: fixed;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    text-align: center;
+    background: radial-gradient(ellipse 80% 70% at 50% 45%, #0c0d12, #050507 70%, #020203);
+  }
+}
+.desk-only__name {
+  margin: 0 0 16px;
+  font-size: clamp(44px, 12vw, 72px);
+  font-weight: 200;
+  line-height: 0.9;
+  letter-spacing: -0.045em;
+}
+.desk-only__note {
+  max-width: 32ch;
+  margin: 0 auto;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.9;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--bone-dim);
-  cursor: pointer;
-  pointer-events: auto; /* the veil itself lets input through */
-}
-.veil__anyway:focus-visible {
-  outline: 1px solid var(--bone-dim);
-  outline-offset: 3px;
 }

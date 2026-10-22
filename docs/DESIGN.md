@@ -9,7 +9,7 @@ thing that moves. There is no navigation, marketing copy or call to action.
 The interface is a few instruments around the scene: a title, a clock, a
 lit-floor count, a time scale and some toggles.
 
-- **Subject:** Residence 07, eleven twisting white slabs on a glazed lobby,
+- **Subject:** Lantern House, eleven twisting white slabs on a glazed lobby,
   ending in a penthouse with a pool and a floating roof.
 - **Moment:** a clear night just after rain, opening at blue hour.
 - **Focus:** the house is the whole story. Mountains, sky and meadow are kept
@@ -62,14 +62,29 @@ children's room with a night light), so a fully lit evening reads **09 / 11**.
 **S** cycles Autumn, Winter, Spring and Summer. Each season sets sky, cloud,
 moonlight, fog, exposure, foliage and something in the air: leaves, snow,
 blossom or fireflies. A change is staged (sky first, foliage last) rather
-than cross-faded. Rain turns up the pool ripples and spreads puddles; in
-winter it becomes snow, which settles over about 30 seconds.
+than cross-faded. Crowns are graded in patches, so autumn mixes rust, red and
+a few leaves still green, and spring runs blossom from white to pink with new
+green leaves showing through. Summer crowns go denser and darker, with clumps
+of light and shade, under a warm haze low on the horizon. Bark follows the
+season too: the cherry scan shows only in spring, and is greyed and furrowed
+the rest of the year. Autumn leaves leaf litter under the trees; spring leaves
+a patch of petals under each tree and on the pool. The moon carries small
+craters, a slight fall-off at its limb and a halo that is widest in winter's
+crisp air. The white fascias carry a faint drip line of grime along their
+undersides, with uneven streaks, so they do not read as clean CG up close. Rain turns up the pool
+ripples and spreads puddles; in winter it becomes snow, which settles over
+about 30 seconds in drifts on the lawn, plinth, hedge and planter tops, tree
+crowns and the penthouse roof (never under a slab), with a soft bump and
+glints near the eye, and the pool freezes into frosted, cracked ice.
 
 ## Sound
 
-Off until asked for, and synthesised: a low night bed, rain, wind or crickets
-by season, and a click and hum as each floor switches on, pitched up a
-pentatonic climb. A fully lit tower is a chord.
+On by default, and it starts on the visitor's first click or key, since
+browsers allow audio only after a gesture (a scroll does not count). The bed
+is a field recording of a meadow at night (BigSoundBank #1880, CC0), low-passed
+so the crickets sit far off. Over it, synthesised with Web Audio: rain when it
+rains, wind by season, and a soft chime as each floor switches on, pitched up a
+pentatonic climb and blooming in a long reverb. The beacon rings a high bell.
 
 ## Accessibility
 

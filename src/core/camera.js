@@ -13,14 +13,17 @@ import { FLOOR_SPECS } from '../tower/rooms.js';
 
 /* Adaptive quality, so the study stays smooth beyond fast laptops. Each step
    trades the least-visible cost first: pixel density, then bloom, then the
-   mirror pool's reflection resolution. Low-spec hints start one step down;
+   mirror pool's reflection resolution, then multisampling (the largest cost
+   on an integrated GPU; foliage edges get harder). Low-spec hints (four or fewer
+   threads, or 4 GB of memory) start two steps down, so the intro is smooth;
    the governor in frame() steps down further only on sustained slow frames,
    and never back up (no visible oscillation). */
 export const QUALITY = [
-  { pr: 1.75, bloom: true, mirror: 0.5, mirrorEvery: 1 },
-  { pr: 1.35, bloom: true, mirror: 0.5, mirrorEvery: 1 },
-  { pr: 1.0, bloom: false, mirror: 0.35, mirrorEvery: 2 },
-  { pr: 0.8, bloom: false, mirror: 0.25, mirrorEvery: 4 },
+  { pr: 1.75, bloom: true, mirror: 0.5, mirrorEvery: 1, msaa: 4 },
+  { pr: 1.35, bloom: true, mirror: 0.5, mirrorEvery: 1, msaa: 4 },
+  { pr: 1.0, bloom: false, mirror: 0.35, mirrorEvery: 2, msaa: 4 },
+  { pr: 0.8, bloom: false, mirror: 0.25, mirrorEvery: 4, msaa: 2 },
+  { pr: 0.7, bloom: false, mirror: 0.25, mirrorEvery: 4, msaa: 0 },
 ];
 // The mirror pool redraws the whole scene for its reflection: the biggest CPU
 // cost per frame. Lower levels refresh it every 2nd / 4th frame; a still pool
@@ -34,10 +37,15 @@ export const QUALITY = [
     if (n++ % every === 0) reflect.apply(this, args);
   };
 }
-export let qLevel = (navigator.hardwareConcurrency || 8) <= 4 || (navigator.deviceMemory || 8) <= 4 ? 1 : 0;
+export let qLevel = (navigator.hardwareConcurrency || 8) <= 4 || (navigator.deviceMemory || 8) <= 4 ? 2 : 0;
 export function setQuality(level) {
   qLevel = Math.min(level, QUALITY.length - 1);
   bloom.enabled = QUALITY[qLevel].bloom;
+  for (const rt of [composer.renderTarget1, composer.renderTarget2]) {
+    if (rt.samples === QUALITY[qLevel].msaa) continue;
+    rt.samples = QUALITY[qLevel].msaa;
+    rt.dispose(); // reallocated at the new sample count on the next render
+  }
   resize();
 }
 function resize() {
@@ -76,7 +84,7 @@ const camLook = new THREE.Vector3();
 
 // The ride, bottom to top: arrival, the canopy, each floor's terrace corner, the pool deck.
 const STOPS = [
-  { name: 'Residence 07 · Arrival', h: 1 },
+  { name: 'Lantern House · Arrival', h: 1 },
   { name: 'Entrance · Oak canopy', h: 1 },
   ...[...FLOOR_SPECS]
     .sort((a, b) => a.i - b.i)
@@ -154,8 +162,8 @@ addEventListener('scroll', onScroll, { passive: true });
 addEventListener('resize', onScroll);
 const goU = (u) => scrollTo({ top: u * maxScroll(), behavior: REDUCED ? 'auto' : 'smooth' });
 addEventListener('keydown', (e) => {
-  // Arrow / Page / Space keys glide to the next named level.
-  const d = ['ArrowDown', 'PageDown'].includes(e.key) ? 1 : ['ArrowUp', 'PageUp'].includes(e.key) ? -1 : 0;
+  // Arrow / Page keys glide to the next named level: Up climbs the tower, Down descends.
+  const d = ['ArrowUp', 'PageUp'].includes(e.key) ? 1 : ['ArrowDown', 'PageDown'].includes(e.key) ? -1 : 0;
   if (!d) return;
   e.preventDefault();
   const next =
@@ -197,11 +205,14 @@ export function updateCamera(t, el, dt, orbitYaw) {
   const breathe = REDUCED ? 0 : (1 - Math.cos(t * 0.09)) * 0.012 * (1 - settle);
   const sway = (REDUCED ? 0 : Math.sin(t * 0.05) * 0.06) + eased.x * 0.08 + orbitYaw;
   orbitPose(u, _pA, _lA);
-  _pA
-    .sub(_lA)
-    .applyAxisAngle(camera.up, sway)
-    .multiplyScalar(1 + settle * 0.5 - breathe)
-    .add(_lA); // drift round the subject; opening dolly-in
+  _pA.sub(_lA).applyAxisAngle(camera.up, sway); // drift round the subject
+  // Opening dolly-in: push in across the ground, never down through it, and
+  // settle from a little above the rest height.
+  const k = 1 + settle * 0.5 - breathe;
+  _pA.x *= k;
+  _pA.z *= k;
+  _pA.add(_lA);
+  _pA.y += settle * 6;
   if (!REDUCED) _pA.y += Math.sin(t * 0.8) * 0.06 + Math.sin(t * 1.9 + 1.0) * 0.025; // rotor hover
   camera.position.copy(_pA);
   camera.position.y += eased.y * 1.5;

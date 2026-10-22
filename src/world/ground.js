@@ -6,6 +6,7 @@ import { scene, SNOW_COVER, STAGE_C } from '../core/scene.js';
 import { M } from './materials.js';
 import { extrude, flat, parts, rrect } from './geometry.js';
 import { addGlint, decalMat, haloMats, halos, mistTex } from './kit.js';
+import { SNOW_GLINT, SNOW_GLSL } from './snow.js';
 import { glowPts } from '../tower/base.js';
 import { tufts } from '../tower/trees.js';
 
@@ -70,12 +71,21 @@ function groundY(x, z) {
     sh.fragmentShader = sh.fragmentShader
       .replace(
         '#include <common>',
-        '#include <common>\nvarying vec3 vWP;\nuniform float uSnowCover;\nuniform vec3 uStageC;',
+        `#include <common>\nvarying vec3 vWP;\nuniform float uSnowCover;\nuniform vec3 uStageC;\n${SNOW_GLSL}`,
       )
-      // Snow lies unevenly: thin where the meadow's tufts poke through, full on the hills.
+      // Snow lies in drifts, thin where the meadow's tufts poke through, with a
+      // soft wind-packed bump and crystals that glint as the eye moves.
       .replace(
         '#include <color_fragment>',
-        '#include <color_fragment>\nfloat snl = 0.72 + 0.28 * sin(vWP.x * 0.73) * sin(vWP.z * 0.61 + 1.7);\ndiffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.78, 0.81, 0.87), uSnowCover * snl);',
+        '#include <color_fragment>\nfloat snl = uSnowCover * (0.55 + 0.45 * snDrift(vWP.xz));\ndiffuseColor.rgb = mix(diffuseColor.rgb, SNOW_COL * 0.97, snl);',
+      )
+      .replace(
+        '#include <normal_fragment_maps>',
+        '#include <normal_fragment_maps>\nnormal = normalize(normal + snl * (viewMatrix * vec4(snBump(vWP), 0.0)).xyz);',
+      )
+      .replace(
+        '#include <opaque_fragment>',
+        `outgoingLight += ${SNOW_GLINT} * snl * snSparkle(vWP);\n#include <opaque_fragment>`,
       )
       .replace(
         '#include <dithering_fragment>',

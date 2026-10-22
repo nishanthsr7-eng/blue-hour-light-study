@@ -1,19 +1,24 @@
 import { state } from '../core/state.js';
+import ambienceUrl from '../assets/night-ambience.mp3';
 
-/* Sound, off until asked for: everything is synthesised with Web Audio (no
-   files). A low night bed, rain hiss when it rains, and a soft click and
-   hum as each level switches on, pitched up the tower; the beacon pings. */
+/* Sound, on by default but silent until the visitor's first click or key
+   (browsers allow audio only after a gesture; see unlock()), and built only
+   once it can be heard: opening the audio device and the reverb costs about
+   100 ms of main thread, which a muted visitor never pays. The bed is a
+   looping field recording of a meadow at night (BigSoundBank #1880, CC0);
+   rain hiss, the season's wind and a soft chime as each level switches on,
+   pitched up the tower, are synthesised with Web Audio and sent through a
+   long hall reverb; the beacon rings a high bell. */
 export const sound = (() => {
   let ctx = null,
     master = null,
     rainGain = null,
     windGain = null,
-    cricketGain = null,
     buf = null,
-    on = false,
-    muted = false,
+    verb = null,
+    on = true, // the visitor's choice; nothing plays until unlock() or toggle() runs in a gesture
+    muted = true, // muted by default for now; the Mute button unmutes
     wantRain = false;
-  const layers = []; // one quiet sustained tone per zone, swelling as that zone lights
   const level = () => (on && !muted ? 0.5 : 0);
   const HUM = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21, 24, 26]; // a pentatonic climb, lobby → penthouse
   const noiseBuf = (c) => {
@@ -31,8 +36,21 @@ export const sound = (() => {
     ctx = new AudioContext();
     master = ctx.createGain();
     master.gain.value = 0;
+    master.gain.setTargetAtTime(level(), ctx.currentTime, 0.4);
     master.connect(ctx.destination);
     buf = noiseBuf(ctx);
+    // Reverb: a synthetic 4 s decaying-noise impulse, so chimes bloom into the night.
+    const len = ctx.sampleRate * 4,
+      ir = ctx.createBuffer(2, len, ctx.sampleRate);
+    for (let c = 0; c < 2; c++) {
+      const d = ir.getChannelData(c);
+      for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3);
+    }
+    const conv = ctx.createConvolver();
+    conv.buffer = ir;
+    verb = ctx.createGain();
+    verb.gain.value = 0.5;
+    verb.connect(conv).connect(master);
     const loop = (type, f, q, g) => {
       const src = ctx.createBufferSource();
       src.buffer = buf;
@@ -47,30 +65,29 @@ export const sound = (() => {
       src.start();
       return gn;
     };
-    loop('lowpass', 320, 0.4, 0.22); // the night: distant air and the valley's hum
+    // The night: a 75-second loop of a CC0 field recording, crickets and distant frogs, faded in once decoded.
+    fetch(ambienceUrl)
+      .then((r) => r.arrayBuffer())
+      .then((a) => ctx.decodeAudioData(a))
+      .then((b) => {
+        const src = ctx.createBufferSource(),
+          g = ctx.createGain();
+        src.buffer = b;
+        src.loop = true;
+        // Low-pass well under the crickets' 4–5 kHz chirp, so they sit far off in the field.
+        const lp = ctx.createBiquadFilter();
+        lp.type = 'lowpass';
+        lp.frequency.value = 1600;
+        lp.Q.value = 0.5;
+        g.gain.setValueAtTime(0, ctx.currentTime);
+        g.gain.linearRampToValueAtTime(0.8, ctx.currentTime + 4);
+        src.connect(lp).connect(g).connect(master);
+        src.start();
+      })
+      .catch(() => {}); // no recording: chimes, wind and rain only
     rainGain = loop('bandpass', 2600, 0.5, 0); // rain on stone and glass
     rainGain.gain.value = wantRain ? 0.16 : 0;
-    // Floor ambience: each lit floor adds a soft detuned pair on the same pentatonic climb,
-    // so a full tower is a chord and a dark one is just the night.
-    for (let k = 0; k < 12; k++) {
-      const g = ctx.createGain();
-      g.gain.value = 0;
-      g.connect(master);
-      const lp = ctx.createBiquadFilter();
-      lp.type = 'lowpass';
-      lp.frequency.value = 900;
-      lp.connect(g);
-      for (const d of [-4, 4]) {
-        const o = ctx.createOscillator();
-        o.type = 'triangle';
-        o.frequency.value = 110 * Math.pow(2, HUM[k] / 12);
-        o.detune.value = d;
-        o.connect(lp);
-        o.start();
-      }
-      layers.push(g);
-    }
-    // Season beds: wind (cold and rising in winter, a rustle in autumn) and summer/spring crickets.
+    // Season bed: wind (cold and rising in winter, a rustle in autumn).
     windGain = loop('lowpass', 460, 0.7, 0);
     const lfo = ctx.createOscillator(),
       lfoG = ctx.createGain();
@@ -82,103 +99,78 @@ export const sound = (() => {
     lfo.start();
     windGain.disconnect();
     windGain.connect(swell).connect(master);
-    const cr = ctx.createOscillator();
-    cr.frequency.value = 4300;
-    const trill = ctx.createGain();
-    trill.gain.value = 0.5;
-    const tr = ctx.createOscillator();
-    tr.type = 'square';
-    tr.frequency.value = 27;
-    const trG = ctx.createGain();
-    trG.gain.value = 0.5;
-    tr.connect(trG).connect(trill.gain);
-    const chirp = ctx.createGain();
-    chirp.gain.value = 0.5;
-    const ch = ctx.createOscillator();
-    ch.type = 'square';
-    ch.frequency.value = 1.3;
-    const chG = ctx.createGain();
-    chG.gain.value = 0.5;
-    ch.connect(chG).connect(chirp.gain);
-    cricketGain = ctx.createGain();
-    cricketGain.gain.value = 0;
-    cr.connect(trill).connect(chirp).connect(cricketGain).connect(master);
-    cr.start();
-    tr.start();
-    ch.start();
     this.season(state.season);
+  }
+  // A bell-like tone: sine fundamental plus a faint octave, slow attack, long decay, half to the reverb.
+  function chime(f, peak, dur) {
+    const t = ctx.currentTime,
+      g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(peak, t + 0.08);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    g.connect(master);
+    g.connect(verb);
+    for (const [m, a] of [
+      [1, 1],
+      [2, 0.25],
+    ]) {
+      const o = ctx.createOscillator(),
+        og = ctx.createGain();
+      o.frequency.value = f * m;
+      og.gain.value = a;
+      o.connect(og).connect(g);
+      o.start(t);
+      o.stop(t + dur + 0.1);
+    }
   }
   const api = {
     season(S) {
       if (!ctx || !S.name) return;
       windGain.gain.setTargetAtTime(S.wind, ctx.currentTime, 1.2);
-      cricketGain.gain.setTargetAtTime(S.crickets, ctx.currentTime, 1.2);
     },
     toggle() {
       on = !on;
-      if (on && !ctx) init.call(api);
-      if (!ctx) return on;
-      if (on) ctx.resume();
-      master.gain.setTargetAtTime(level(), ctx.currentTime, 0.4);
+      if (on)
+        api.unlock(); // a click on Sound is itself a gesture
+      else if (ctx) master.gain.setTargetAtTime(0, ctx.currentTime, 0.4);
       return on;
+    },
+    // Start (or resume) the audio if Sound is on and not muted; call only from
+    // a user gesture. Returns true once audio is running.
+    unlock() {
+      if (!on || muted) return false;
+      if (!ctx) init.call(api);
+      else master.gain.setTargetAtTime(level(), ctx.currentTime, 0.4);
+      if (ctx.state === 'suspended') ctx.resume();
+      return true;
     },
     // Mute silences everything at once, whatever Sound is set to, and remembers both.
     mute(v) {
       muted = v;
-      if (ctx) master.gain.setTargetAtTime(level(), ctx.currentTime, 0.08);
+      if (!muted)
+        api.unlock(); // Mute and M are themselves gestures
+      else if (ctx) master.gain.setTargetAtTime(0, ctx.currentTime, 0.08);
       return muted;
     },
-    zones(lit) {
-      // lit(k): is zone k lit now (isLit in light-study.js)
-      if (!ctx || !on) return;
-      for (let k = 0; k < 12; k++) layers[k].gain.setTargetAtTime(lit(k) ? 0.012 : 0, ctx.currentTime, 0.6);
+    // Suspend the audio while the page is hidden below desktop size, and resume it after.
+    hold(v) {
+      if (ctx && v) ctx.suspend();
+      else if (ctx) ctx.resume();
     },
     rain(v) {
       wantRain = v;
       if (rainGain && ctx) rainGain.gain.setTargetAtTime(v ? 0.16 : 0, ctx.currentTime, 0.8);
     },
     off() {
+      // A level going dark: a low, quiet note that sinks into the reverb.
       if (!on || muted || !ctx) return;
-      const t = ctx.currentTime,
-        n = ctx.createBufferSource();
-      n.buffer = buf;
-      const hp = ctx.createBiquadFilter();
-      hp.type = 'highpass';
-      hp.frequency.value = 2200;
-      const cg = ctx.createGain();
-      cg.gain.setValueAtTime(0.12, t);
-      cg.gain.exponentialRampToValueAtTime(0.0001, t + 0.02);
-      n.connect(hp).connect(cg).connect(master);
-      n.start(t, Math.random());
-      n.stop(t + 0.04);
+      chime(110, 0.012, 1.6);
     },
     level(k) {
+      // A soft chime a step higher each level; the beacon rings an octave bell.
       if (!on || muted || !ctx) return;
-      const t = ctx.currentTime;
-      // Click: a 25 ms burst of high noise, like a relay closing.
-      const n = ctx.createBufferSource();
-      n.buffer = buf;
-      const hp = ctx.createBiquadFilter();
-      hp.type = 'highpass';
-      hp.frequency.value = 3000;
-      const cg = ctx.createGain();
-      cg.gain.setValueAtTime(0.18, t);
-      cg.gain.exponentialRampToValueAtTime(0.0001, t + 0.025);
-      n.connect(hp).connect(cg).connect(master);
-      n.start(t, Math.random());
-      n.stop(t + 0.05);
-      // Hum: a soft sine that blooms and fades, a step higher each level; the beacon pings.
-      const o = ctx.createOscillator(),
-        og = ctx.createGain(),
-        beacon = k === 12;
-      o.type = 'sine';
-      o.frequency.value = beacon ? 880 : 110 * Math.pow(2, HUM[k] / 12);
-      og.gain.setValueAtTime(0.0001, t);
-      og.gain.exponentialRampToValueAtTime(beacon ? 0.05 : 0.07, t + 0.04);
-      og.gain.exponentialRampToValueAtTime(0.0001, t + (beacon ? 1.4 : 0.9));
-      o.connect(og).connect(master);
-      o.start(t);
-      o.stop(t + 1.5);
+      if (k === 12) chime(880, 0.018, 4);
+      else chime(220 * Math.pow(2, HUM[k] / 12), 0.022, 2.6);
     },
   };
   return api;

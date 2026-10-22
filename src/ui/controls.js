@@ -28,6 +28,17 @@ soundBtn.addEventListener('click', () => {
   soundBtn.setAttribute('aria-pressed', sound.toggle());
   state.lightDirty = true;
 });
+// Sound is on by default, but browsers only allow audio after a click, tap or key
+// (a scroll does not count), so it starts on the first one. A first press of Sound
+// or Mute is left to that control, so it never plays a blip before going quiet.
+const GESTURES = ['pointerdown', 'keydown', 'touchend'];
+const soundOnFirstGesture = (e) => {
+  if (e.target.closest?.('#soundBtn, #muteBtn') || e.key === 'm' || e.key === 'M') return;
+  if (!sound.unlock()) return;
+  for (const ev of GESTURES) removeEventListener(ev, soundOnFirstGesture);
+  state.lightDirty = true;
+};
+for (const ev of GESTURES) addEventListener(ev, soundOnFirstGesture, { passive: true });
 const muteBtn = document.getElementById('muteBtn');
 const toggleMute = () =>
   muteBtn.setAttribute('aria-pressed', sound.mute(muteBtn.getAttribute('aria-pressed') !== 'true'));

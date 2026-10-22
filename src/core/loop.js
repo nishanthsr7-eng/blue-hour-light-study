@@ -14,6 +14,8 @@ import { orbitStep, orbitYaw } from '../ui/orbit.js';
 import { rainStep } from '../study/rain.js';
 import { seasonStep } from '../study/seasons.js';
 import { loadProgress } from '../ui/veil.js';
+import { sound } from '../study/audio.js';
+import { NOT_DESKTOP } from './desktop.js';
 
 /* The frame loop, the warm-up behind the veil, and the quality governor.
    Imported last (app.js), once every part of the scene exists. */
@@ -21,7 +23,24 @@ import { loadProgress } from '../ui/veil.js';
 let t0 = performance.now() / 1000,
   lastT = null; // t0 resets when the veil lifts (see warmUp)
 
+// A window shrunk below desktop size hides the scene (main.css); stop drawing
+// and hold the sound until it is large again.
+const small = matchMedia(NOT_DESKTOP);
+
 function frame(now) {
+  if (small.matches) {
+    lastT = null;
+    sound.hold(true);
+    small.addEventListener(
+      'change',
+      () => {
+        sound.hold(false);
+        requestAnimationFrame(frame);
+      },
+      { once: true },
+    );
+    return;
+  }
   const t = now / 1000,
     el = REDUCED ? 99 : t - t0;
 
@@ -66,12 +85,13 @@ function frame(now) {
     grade.uniforms.uTime.value = (now * 0.001) % 100;
     scene.updateMatrixWorld();
     composer.render();
-    // Governor: a slow-frame streak (~1.5 s above 22 ms while active) drops one quality step.
+    // Governor: a slow-frame streak (~1.5 s above 22 ms while active) drops one quality step,
+    // two when frames average over 40 ms, so a weak laptop reaches its level sooner.
     if (!idle && lastDraw && el > 3) {
       gov.ema += (now - lastDraw - gov.ema) * 0.05;
-      gov.slow = gov.ema > 22 ? gov.slow + 1 : 0;
-      if (gov.slow > 90 && qLevel < QUALITY.length - 1) {
-        setQuality(qLevel + 1);
+      gov.slow = gov.ema > 22 ? gov.slow + (now - lastDraw) : 0;
+      if (gov.slow > 1500 && qLevel < QUALITY.length - 1) {
+        setQuality(qLevel + (gov.ema > 40 ? 2 : 1));
         gov.slow = 0;
         gov.ema = 16;
         debug(`[perf] quality step ${qLevel}`);
